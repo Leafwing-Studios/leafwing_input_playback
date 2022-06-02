@@ -4,4 +4,4 @@
 
 ### Enhancements
 
-- shamelessly stole input mocking functionality from `leafwing_input_manager`
+- shamelessly stole input mocking functionality from `leafwing_input_playback`

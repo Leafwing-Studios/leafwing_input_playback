@@ -20,7 +20,7 @@ mod orientation_trait {
         ///
         /// # Example
         /// ```rust
-        /// use leafwing_input_manager::orientation::{Orientation, Direction, Rotation};
+        /// use leafwing_input_playback::orientation::{Orientation, Direction, Rotation};
         ///
         /// Direction::NORTH.distance(Direction::SOUTHWEST).assert_approx_eq(Rotation::from_degrees(135.));
         /// ```
@@ -48,7 +48,7 @@ mod orientation_trait {
         ///
         /// # Example
         /// ```rust
-        /// use leafwing_input_manager::orientation::{Direction, Orientation, RotationDirection};
+        /// use leafwing_input_playback::orientation::{Direction, Orientation, RotationDirection};
         ///
         /// assert_eq!(Direction::NORTH.rotation_direction(Direction::NORTH), RotationDirection::Clockwise);
         /// assert_eq!(Direction::NORTH.rotation_direction(Direction::SOUTH), RotationDirection::Clockwise);
@@ -78,7 +78,7 @@ mod orientation_trait {
         ///
         /// # Example
         /// ```rust
-        /// use leafwing_input_manager::orientation::{Rotation, Orientation};
+        /// use leafwing_input_playback::orientation::{Rotation, Orientation};
         ///
         /// let mut rotation = Rotation::SOUTH;
         ///
@@ -170,7 +170,7 @@ mod rotation_direction {
     ///
     /// # Example
     /// ```rust
-    /// use leafwing_input_manager::orientation::{Orientation, Rotation, RotationDirection};
+    /// use leafwing_input_playback::orientation::{Orientation, Rotation, RotationDirection};
     ///
     /// assert_eq!(Rotation::NORTH.rotation_direction(Rotation::NORTH), RotationDirection::Clockwise);
     /// assert_eq!(Rotation::NORTH.rotation_direction(Rotation::EAST), RotationDirection::Clockwise);
@@ -232,7 +232,7 @@ mod rotation {
     ///
     /// # Example
     /// ```rust
-    /// use leafwing_input_manager::orientation::{Rotation, Direction, Orientation};
+    /// use leafwing_input_playback::orientation::{Rotation, Direction, Orientation};
     /// use core::f32::consts::{PI, TAU};
     ///
     /// let three_o_clock = Rotation::from_degrees(90.0);
@@ -319,7 +319,7 @@ mod rotation {
         /// # Example
         /// ```rust
         /// use bevy_math::Vec2;
-        /// use leafwing_input_manager::orientation::Rotation;
+        /// use leafwing_input_playback::orientation::Rotation;
         ///
         /// assert_eq!(Rotation::from_xy(Vec2::new(0.0, 1.0)), Ok(Rotation::NORTH));
         /// ```
@@ -466,7 +466,7 @@ mod direction {
     ///
     /// # Example
     /// ```rust
-    /// use leafwing_input_manager::orientation::Direction;
+    /// use leafwing_input_playback::orientation::Direction;
     /// use bevy_math::Vec2;
     ///
     /// assert_eq!(Direction::NORTH.unit_vector(), Vec2::new(0.0, 1.0));

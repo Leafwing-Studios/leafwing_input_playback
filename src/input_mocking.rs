@@ -26,7 +26,7 @@ use bevy_window::CursorMoved;
 /// # Examples
 /// ```rust
 /// use bevy::prelude::*;
-/// use leafwing_input_manager::MockInput;
+/// use leafwing_input_playback::MockInput;
 ///
 /// let mut world = World::new();
 ///
@@ -36,7 +36,7 @@ use bevy_window::CursorMoved;
 ///
 /// ```rust
 /// use bevy::prelude::*;
-/// use leafwing_input_manager::{MockInput, user_input::UserInput};
+/// use leafwing_input_playback::{MockInput, user_input::UserInput};
 ///
 /// let mut app = App::new();
 ///

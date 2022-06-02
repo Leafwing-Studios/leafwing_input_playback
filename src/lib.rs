@@ -24,7 +24,7 @@ pub mod systems;
 pub mod user_input;
 
 // Importing the derive macro
-pub use leafwing_input_manager_macros::Actionlike;
+pub use leafwing_input_playback_macros::Actionlike;
 
 /// Everything you need to get started
 pub mod prelude {
@@ -52,7 +52,7 @@ pub mod prelude {
 ///
 /// # Example
 /// ```rust
-/// use leafwing_input_manager::Actionlike;
+/// use leafwing_input_playback::Actionlike;
 ///
 /// #[derive(Actionlike, PartialEq, Eq, Clone, Copy, Hash)]
 /// enum PlayerAction {
