@@ -7,7 +7,7 @@ mod display_impl;
 pub mod errors;
 mod input_mocking;
 // Re-export this at the root level for convenience
-pub use input_mocking::MockInput;
+pub use input_mocking::{MockInput, RegisterGamepads};
 pub mod axislike;
 pub mod buttonlike;
 pub mod orientation;

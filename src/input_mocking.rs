@@ -3,12 +3,14 @@
 use crate::user_input::{InputStreams, MutableInputStreams, UserInput};
 use bevy_app::App;
 use bevy_ecs::event::Events;
-use bevy_ecs::system::{Res, ResMut, SystemState};
+use bevy_ecs::system::{IntoSystem, Res, ResMut, System, SystemState};
 use bevy_ecs::world::World;
 #[cfg(feature = "ui")]
 use bevy_ecs::{component::Component, query::With, system::Query};
 use bevy_input::{
-    gamepad::{Gamepad, GamepadButton, GamepadEvent, Gamepads},
+    gamepad::{
+        gamepad_connection_system, Gamepad, GamepadButton, GamepadEvent, GamepadEventType, Gamepads,
+    },
     keyboard::{KeyCode, KeyboardInput},
     mouse::{MouseButton, MouseButtonInput, MouseWheel},
     touch::{TouchInput, Touches},
@@ -378,21 +380,77 @@ impl MockInput for App {
     }
 }
 
+/// Helper methods to easily manually register and deregister gamepads for testing
+pub trait RegisterGamepads {
+    /// Adds the provided [`Gamepad`] to the [`Gamepads`] resource
+    fn register_gamepad(&mut self, gamepad: Gamepad);
+
+    /// Removes the provided [`Gamepad`] from the [`Gamepads`] resource
+    fn deregister_gamepad(&mut self, gamepad: Gamepad);
+}
+
+impl RegisterGamepads for World {
+    fn register_gamepad(&mut self, gamepad: Gamepad) {
+        // BLOCKED: please use something less absurd once https://github.com/bevyengine/bevy/issues/4911 is fixed
+
+        // Generate a synthetic event
+        let gamepad_event = GamepadEvent(gamepad, GamepadEventType::Connected);
+        let mut events_resource = self.resource_mut::<Events<GamepadEvent>>();
+        events_resource.send(gamepad_event);
+
+        // Ensure that the Gamepads resource exists to avoid pointless panics
+        if self.get_resource::<Gamepads>().is_none() {
+            self.init_resource::<Gamepads>();
+        }
+
+        // Manually run the gamepad_connection_system on the World to process the event just sent
+        let mut system = IntoSystem::into_system(gamepad_connection_system);
+        system.initialize(self);
+        system.run((), self);
+    }
+
+    fn deregister_gamepad(&mut self, gamepad: Gamepad) {
+        // Generate a synthetic event
+        let gamepad_event = GamepadEvent(gamepad, GamepadEventType::Disconnected);
+        let mut events_resource = self.resource_mut::<Events<GamepadEvent>>();
+        events_resource.send(gamepad_event);
+
+        // Ensure that the Gamepads resource exists to avoid pointless panics
+        if self.get_resource::<Gamepads>().is_none() {
+            self.init_resource::<Gamepads>();
+        }
+
+        // Manually run the gamepad_connection_system on the World to process the event just sent
+        let mut system = IntoSystem::into_system(gamepad_connection_system);
+        system.initialize(self);
+        system.run((), self);
+    }
+}
+
+impl RegisterGamepads for App {
+    fn register_gamepad(&mut self, gamepad: Gamepad) {
+        self.world.register_gamepad(gamepad)
+    }
+
+    fn deregister_gamepad(&mut self, gamepad: Gamepad) {
+        self.world.deregister_gamepad(gamepad)
+    }
+}
+
 #[cfg(test)]
 mod test {
 
     #[test]
     fn button_inputs() {
         use crate::input_mocking::MockInput;
-        use bevy::prelude::*;
+        use bevy_ecs::prelude::*;
+        use bevy_input::prelude::*;
 
         let mut world = World::new();
         world.insert_resource(Input::<KeyCode>::default());
         world.insert_resource(Input::<MouseButton>::default());
         world.insert_resource(Input::<GamepadButton>::default());
 
-        // BLOCKED: cannot use the less artifical APIs due to
-        // https://github.com/bevyengine/bevy/issues/3808
         let gamepad = Some(Gamepad(0));
 
         // Test that buttons are unpressed by default
@@ -420,6 +478,27 @@ mod test {
         assert!(!world.pressed(KeyCode::Space));
         assert!(!world.pressed(MouseButton::Right));
         assert!(!world.pressed_for_gamepad(GamepadButtonType::North, gamepad));
+    }
+
+    #[test]
+    fn gamepad_registration() {
+        use crate::input_mocking::RegisterGamepads;
+        use bevy_ecs::prelude::*;
+        use bevy_input::prelude::*;
+
+        let mut world = World::new();
+        let gamepads = world.resource::<Gamepads>();
+        assert_eq!(gamepads.iter().count(), 0);
+
+        world.register_gamepad(Gamepad(0));
+        let gamepads = world.resource::<Gamepads>();
+        assert_eq!(gamepads.iter().count(), 1);
+        assert!(gamepads.contains(&Gamepad(0)));
+
+        world.deregister_gamepad(Gamepad(0));
+        let gamepads = world.resource::<Gamepads>();
+        assert_eq!(gamepads.iter().count(), 0);
+        assert!(!gamepads.contains(&Gamepad(0)));
     }
 
     #[test]
