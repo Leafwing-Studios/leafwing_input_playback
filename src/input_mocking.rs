@@ -399,9 +399,7 @@ impl RegisterGamepads for World {
         events_resource.send(gamepad_event);
 
         // Ensure that the Gamepads resource exists to avoid pointless panics
-        if self.get_resource::<Gamepads>().is_none() {
-            self.init_resource::<Gamepads>();
-        }
+        self.init_resource::<Gamepads>();
 
         // Manually run the gamepad_connection_system on the World to process the event just sent
         let mut system = IntoSystem::into_system(gamepad_connection_system);
@@ -416,9 +414,7 @@ impl RegisterGamepads for World {
         events_resource.send(gamepad_event);
 
         // Ensure that the Gamepads resource exists to avoid pointless panics
-        if self.get_resource::<Gamepads>().is_none() {
-            self.init_resource::<Gamepads>();
-        }
+        self.init_resource::<Gamepads>();
 
         // Manually run the gamepad_connection_system on the World to process the event just sent
         let mut system = IntoSystem::into_system(gamepad_connection_system);
