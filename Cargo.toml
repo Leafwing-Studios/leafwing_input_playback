@@ -1,0 +1,43 @@
+[package]
+name = "leafwing_input_playback"
+description = "Input recording and mocking functionality for the Bevy game engine."
+version = "0.3.0"
+authors = ["Leafwing Studios"]
+homepage = "https://leafwing-studios.com/"
+repository = "https://github.com/leafwing-studios/leafwing_input_playback"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+categories = ["games", "game-development"]
+keywords = ["bevy", "input"]
+exclude = ["assets/**/*", "tools/**/*", ".github/**/*"]
+
+[profile.dev]
+opt-level = 3
+
+[workspace]
+members = ["./", "tools/ci"]
+
+[features]
+default = []
+
+[dependencies]
+bevy_app = {version = "0.7", default-features = false}
+bevy_core = {version = "0.7", default-features = false}
+bevy_transform = {version = "0.7", default-features = false}
+bevy_ecs = {version = "0.7", default-features = false}
+bevy_input = {version = "0.7", default-features = false, features = ["serialize"]}
+bevy_math = {version = "0.7", default-features = false}
+bevy_utils = {version = "0.7", default-features = false}
+bevy_window = {version = "0.7", default-features = false}
+
+petitset = {version = "0.2", features = ["serde_compat"]}
+derive_more = {version = "0.99", default-features = false, features = ["display", "error"]}
+itertools = "0.10"
+serde = {version = "1.0", features = ["derive"]}
+
+[dev-dependencies]
+bevy = {version = "0.7", default-features = false}
+
+[lib]
+name = "leafwing_input_playback"
+path = "src/lib.rs"
