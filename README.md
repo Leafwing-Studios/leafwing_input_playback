@@ -1,6 +1,7 @@
 # About
 
-A input recording, mocking and playback library for the [Bevy] game engine in Rust.
+An input recording, mocking and playback library for the [Bevy] game engine in Rust.
+Test your games and applications without breaking a sweat.
 
 This crate is designed to work smoothly with [`leafwing-input-manager`](https://crates.io/crates/leafwing-input-manager), a simple but expressive tool to map user inputs to in-game actions.
 
