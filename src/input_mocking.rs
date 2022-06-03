@@ -483,10 +483,13 @@ mod test {
     #[test]
     fn gamepad_registration() {
         use crate::input_mocking::RegisterGamepads;
+        use bevy_ecs::event::Events;
         use bevy_ecs::prelude::*;
         use bevy_input::prelude::*;
 
         let mut world = World::new();
+        world.init_resource::<Gamepads>();
+        world.init_resource::<Events<GamepadEvent>>();
         let gamepads = world.resource::<Gamepads>();
         assert_eq!(gamepads.iter().count(), 0);
 
