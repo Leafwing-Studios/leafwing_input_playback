@@ -10,9 +10,6 @@ use leafwing_input_playback::{MockInput, RegisterGamepads};
 
 fn main() {
     let mut app = App::new();
-
-    // Then, configure it
-    // This is often useful to save with helper functions so you can reuse it between tests
     app.add_plugins(MinimalPlugins)
         .add_plugin(InputPlugin)
         .add_system(pause_game)
