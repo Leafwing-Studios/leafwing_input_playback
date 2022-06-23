@@ -1,16 +1,19 @@
 //! Captures user input from assorted raw `Event` types.
 //!
 //! These are unified into a single [`UnifiedInput`] event stream, which can be played back
+use crate::axislike::AxisPairType;
 use crate::user_input::InputButton;
+
 use bevy_app::{App, CoreStage, Plugin};
 use bevy_core::Time;
 use bevy_ecs::prelude::*;
-use bevy_input::gamepad::{Gamepad, GamepadEvent, GamepadEventType};
+use bevy_input::gamepad::{Gamepad, GamepadAxisType, GamepadEvent, GamepadEventType};
 use bevy_input::keyboard::KeyboardInput;
-use bevy_input::mouse::MouseButtonInput;
+use bevy_input::mouse::{MouseButtonInput, MouseWheel};
 use bevy_input::ElementState;
 /// via the provided [`input_mocking`](crate::input_mocking) functionality
 use bevy_utils::Duration;
+use bevy_window::CursorMoved;
 
 /// A timestamped device-agnostic user-input event
 ///
@@ -38,6 +41,22 @@ pub enum InputEvent {
     Pressed(InputButton),
     /// The [`InputButton`] was released
     Released(InputButton),
+    /// A two-dimensional axis-like input was changed
+    AxisPairChanged {
+        /// Which axis changed
+        axis: AxisPairType,
+        /// The new horizontal value of the axis
+        x: f32,
+        /// The new vertical value of the axis
+        y: f32,
+    },
+    /// A gamepad axis changed
+    GamepadAxisChanged {
+        /// Which gamepad axis changed
+        axis: GamepadAxisType,
+        /// The new value of the axis
+        value: f32,
+    },
     /// A gamepad was connected to the computer
     GamepadConnected(Gamepad),
     /// A gamepad was disconnected from the computer
@@ -55,7 +74,7 @@ impl Plugin for InputCapturePlugin {
             .add_system_set_to_stage(
                 CoreStage::PreUpdate,
                 SystemSet::new()
-                    .with_system(capture_mouse_button_input)
+                    .with_system(capture_mouse_input)
                     .with_system(capture_keyboard_input)
                     .with_system(capture_gamepad_input),
             );
@@ -69,17 +88,52 @@ pub fn frame_counter(mut frame_count: ResMut<FrameCount>) {
     frame_count.0 += 1;
 }
 
-/// Captures [`MouseButton`] input from the [`MouseButtonInput`] event stream
-pub fn capture_mouse_button_input(
-    mut raw_events: EventReader<MouseButtonInput>,
+/// Captures mouse-driven input from the [`MouseButtonInput`] event stream
+///
+/// Limitations:
+///  - the unit of mouse scrolling is discarded; when played back this is assumed to be pixels
+///  - mouse inputs performed with a locked window will be lost, as [`MouseMotion`](bevy::input::mouse::MouseMotion) events are not captured
+///  - this is not robust to multiple windows; the window that the mouse is on is lost
+pub fn capture_mouse_input(
+    mut mouse_button_events: EventReader<MouseButtonInput>,
+    mut mouse_wheel_events: EventReader<MouseWheel>,
+    mut cursor_moved_events: EventReader<CursorMoved>,
     mut unified_input: EventWriter<UnifiedInput>,
     frame_count: Res<FrameCount>,
     time: Res<Time>,
 ) {
-    for raw_event in raw_events.iter() {
-        let input_event = match raw_event.state {
-            ElementState::Pressed => InputEvent::Pressed(raw_event.button.into()),
-            ElementState::Released => InputEvent::Released(raw_event.button.into()),
+    for mouse_button_event in mouse_button_events.iter() {
+        let input_event = match mouse_button_event.state {
+            ElementState::Pressed => InputEvent::Pressed(mouse_button_event.button.into()),
+            ElementState::Released => InputEvent::Released(mouse_button_event.button.into()),
+        };
+
+        unified_input.send(UnifiedInput {
+            frame: *frame_count,
+            time: time.time_since_startup(),
+            event: input_event,
+        })
+    }
+
+    for mouse_wheel_event in mouse_wheel_events.iter() {
+        let input_event = InputEvent::AxisPairChanged {
+            axis: AxisPairType::ScrollWheel,
+            x: mouse_wheel_event.x,
+            y: mouse_wheel_event.y,
+        };
+
+        unified_input.send(UnifiedInput {
+            frame: *frame_count,
+            time: time.time_since_startup(),
+            event: input_event,
+        })
+    }
+
+    for cursor_moved_event in cursor_moved_events.iter() {
+        let input_event = InputEvent::AxisPairChanged {
+            axis: AxisPairType::Mouse,
+            x: cursor_moved_event.position.x,
+            y: cursor_moved_event.position.y,
         };
 
         unified_input.send(UnifiedInput {
@@ -131,7 +185,7 @@ pub fn capture_gamepad_input(
             Connected => InputEvent::GamepadConnected(gamepad),
             Disconnected => InputEvent::GamepadDisconnected(gamepad),
             ButtonChanged(_button, _value) => todo!(),
-            AxisChanged(_axis, _value) => todo!(),
+            AxisChanged(axis, value) => InputEvent::GamepadAxisChanged { axis, value },
         };
 
         unified_input.send(UnifiedInput {

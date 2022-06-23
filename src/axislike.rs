@@ -3,6 +3,15 @@
 use crate::orientation::{Direction, Rotation};
 use bevy_math::Vec2;
 
+/// A unifying enum for all of [`bevy_input`]'s axis-like values
+#[derive(Debug, Clone, Copy)]
+pub enum AxisPairType {
+    /// The position of the mouse
+    Mouse,
+    /// The mouse scroll wheel
+    ScrollWheel,
+}
+
 /// A high-level abstract user input that varies from -1 to 1, inclusive, along two axes
 ///
 /// The neutral origin is always at 0, 0.
