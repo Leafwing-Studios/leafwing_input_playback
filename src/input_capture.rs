@@ -184,7 +184,15 @@ pub fn capture_gamepad_input(
         let input_event = match raw_event.1 {
             Connected => InputEvent::GamepadConnected(gamepad),
             Disconnected => InputEvent::GamepadDisconnected(gamepad),
-            ButtonChanged(_button, _value) => todo!(),
+            ButtonChanged(button, value) => {
+                if value == 1.0 {
+                    InputEvent::Pressed(button.into())
+                } else if value == 0.0 {
+                    InputEvent::Released(button.into())
+                } else {
+                    todo!()
+                }
+            }
             AxisChanged(axis, value) => InputEvent::GamepadAxisChanged { axis, value },
         };
 
