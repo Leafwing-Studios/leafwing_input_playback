@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use leafwing_input_playback::{playback_data::PlaybackData, InputCapturePlugin};
+use leafwing_input_playback::{capture::InputCapturePlugin, playback_data::PlaybackData};
 
 fn main() {
     App::new()
