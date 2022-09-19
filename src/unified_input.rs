@@ -37,6 +37,9 @@ pub struct UnifiedInput {
     /// typically you will want to use that rather than accessing the internal event storage.
     pub events: Vec<TimestampedInputEvent>,
     /// The index in `events` of the next event to read
+    ///
+    /// When iterating over this struct, iterate one item at a time, beginning at `cursor + 1`.
+    /// When you are done iterating, update this cursor as the last read index.
     pub cursor: usize,
 }
 
@@ -75,6 +78,66 @@ impl UnifiedInput {
     /// Checks if the event stream is empty
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
+    }
+
+    /// Fetches the next available event (if any), and advances the internal `cursor` by one
+    pub fn next(&mut self) -> Option<TimestampedInputEvent> {
+        if self.cursor >= self.events.len() {
+            None
+        } else {
+            self.cursor += 1;
+            Some(self.events[self.cursor - 1].clone())
+        }
+    }
+
+    /// Returns an iterator over all recorded events, beginning at the start of `events`.
+    #[must_use]
+    pub fn iter_all(&mut self) -> impl IntoIterator<Item = TimestampedInputEvent> {
+        let iterator = self.events.clone();
+        self.cursor = self.events.len();
+        iterator
+    }
+
+    /// Returns an iterator over all recorded events, beginning at the current `cursor`.
+    #[must_use]
+    pub fn iter_rest(&mut self) -> impl IntoIterator<Item = TimestampedInputEvent> {
+        let rest = self.events.split_off(self.cursor);
+        self.cursor = self.events.len();
+        rest
+    }
+
+    /// Returns an iterator over all recorded events until the provided `frame` is reached, beginning at the current `cursor`.
+    ///
+    /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
+    #[must_use]
+    pub fn iter_until_time(
+        &mut self,
+        time_since_startup: Duration,
+    ) -> impl IntoIterator<Item = TimestampedInputEvent> {
+        debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
+        let mut result = Vec::with_capacity(self.events.len() - self.cursor);
+        while self.events[self.cursor].time_since_startup < time_since_startup {
+            result.push(self.events[self.cursor].clone());
+            self.cursor += 1;
+        }
+        result
+    }
+
+    /// Returns an iterator over all recorded events until the provided `time_since_startup`, beginning at the current `cursor`
+    ///
+    /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::FrameCount`].
+    #[must_use]
+    pub fn iter_until_frame(
+        &mut self,
+        frame: FrameCount,
+    ) -> impl IntoIterator<Item = TimestampedInputEvent> {
+        debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
+        let mut result = Vec::with_capacity(self.events.len() - self.cursor);
+        while self.events[self.cursor].frame < frame {
+            result.push(self.events[self.cursor].clone());
+            self.cursor += 1;
+        }
+        result
     }
 
     /// Sorts the input stream by either [`Time::time_since_startup`] or [`FrameCount`].
@@ -178,17 +241,7 @@ impl UnifiedInput {
     }
 }
 
-impl Iterator for UnifiedInput {
-    type Item = TimestampedInputEvent;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let event = self.events.get(self.cursor).cloned();
-        self.cursor += 1;
-        event
-    }
-}
-
-/// The sorting strategy used for [`UnifiedInput::sort`].
+/// The sorting strategy used for the [`UnifiedInput::sort`] method.
 ///
 /// In all typical cases, these two sorting strategies should agree.
 pub enum SortingStrategy {
@@ -255,18 +308,6 @@ mod tests {
         state: ButtonState::Released,
     });
 
-    const EVENT_ZERO: TimestampedInputEvent = TimestampedInputEvent {
-        frame: FrameCount(0),
-        time_since_startup: Duration::ZERO,
-        input_event: LEFT_CLICK_PRESS,
-    };
-
-    const EVENT_ONE: TimestampedInputEvent = TimestampedInputEvent {
-        frame: FrameCount(1),
-        time_since_startup: Duration::from_secs(1),
-        input_event: LEFT_CLICK_RELEASE,
-    };
-
     #[test]
     fn send_event() {
         let mut unified_input = UnifiedInput::default();
@@ -304,59 +345,5 @@ mod tests {
 
         // assert_eq!(unified_input.last_input(), Some(LEFT_CLICK_PRESS));
         // assert_eq!(unified_input.current_input(), Some(LEFT_CLICK_RELEASE));
-    }
-
-    #[test]
-    fn next() {
-        let mut unified_input = UnifiedInput::default();
-
-        unified_input.events.push(EVENT_ZERO);
-        unified_input.events.push(EVENT_ONE);
-
-        assert_eq!(unified_input.len(), 2);
-        assert_eq!(unified_input.cursor, 0);
-
-        unified_input.next();
-        assert_eq!(unified_input.cursor, 1);
-        assert_eq!(unified_input.last_framecount(), Some(FrameCount(0)));
-        assert_eq!(unified_input.current_framecount(), Some(FrameCount(1)));
-        assert_eq!(unified_input.last_time(), Some(Duration::ZERO));
-        assert_eq!(unified_input.current_time(), Some(Duration::from_secs(1)));
-
-        unified_input.next();
-        assert_eq!(unified_input.cursor, 2);
-        assert_eq!(unified_input.last_framecount(), Some(FrameCount(1)));
-        assert_eq!(unified_input.current_framecount(), None);
-        assert_eq!(unified_input.last_time(), Some(Duration::from_secs(1)));
-        assert_eq!(unified_input.current_time(), None);
-
-        unified_input.next();
-        assert_eq!(unified_input.cursor, 3);
-        assert_eq!(unified_input.last_framecount(), None);
-        assert_eq!(unified_input.current_framecount(), None);
-        assert_eq!(unified_input.last_time(), None);
-        assert_eq!(unified_input.current_time(), None);
-    }
-
-    #[test]
-    fn iteration() {
-        let mut unified_input = UnifiedInput::default();
-
-        unified_input.events.push(EVENT_ZERO);
-        unified_input.events.push(EVENT_ONE);
-        unified_input.events.push(EVENT_ZERO);
-
-        let mut count = 0;
-        // FIXME: this approach cannot work as the events are consumed
-        // and so the cursors no longer match
-        for event in unified_input.clone() {
-            assert_eq!(
-                event.time_since_startup,
-                unified_input.current_time().unwrap()
-            );
-            count += 1;
-        }
-
-        assert_eq!(count, 3);
     }
 }
