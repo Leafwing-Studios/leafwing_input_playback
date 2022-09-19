@@ -58,22 +58,23 @@ fn spawn_boxes(
 
     if mouse_input.pressed(MouseButton::Left) {
         let primary_window = windows.primary();
-        let cursor_pos = cursor_pos_as_world_pos(primary_window, &camera_query).unwrap();
-
-        commands
-            .spawn_bundle(SpriteBundle {
-                sprite: Sprite {
-                    color: Color::DARK_GREEN,
+        // Don't break if we leave the window
+        if let Some(cursor_pos) = cursor_pos_as_world_pos(primary_window, &camera_query) {
+            commands
+                .spawn_bundle(SpriteBundle {
+                    sprite: Sprite {
+                        color: Color::DARK_GREEN,
+                        ..default()
+                    },
+                    transform: Transform {
+                        translation: cursor_pos.extend(0.0),
+                        scale: Vec3::splat(BOX_SCALE),
+                        ..default()
+                    },
                     ..default()
-                },
-                transform: Transform {
-                    translation: cursor_pos.extend(0.0),
-                    scale: Vec3::splat(BOX_SCALE),
-                    ..default()
-                },
-                ..default()
-            })
-            .insert(Box);
+                })
+                .insert(Box);
+        }
     }
 }
 

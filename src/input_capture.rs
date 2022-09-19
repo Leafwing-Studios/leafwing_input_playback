@@ -26,11 +26,13 @@ impl Plugin for InputCapturePlugin {
                 .add_system_to_stage(CoreStage::First, frame_counter);
         }
 
-        app.init_resource::<UnifiedInput>().add_system_to_stage(
-            // Capture any mocked input as well
-            CoreStage::Last,
-            capture_input,
-        );
+        app.init_resource::<UnifiedInput>()
+            .init_resource::<InputModesCaptured>()
+            .add_system_to_stage(
+                // Capture any mocked input as well
+                CoreStage::Last,
+                capture_input,
+            );
     }
 }
 
