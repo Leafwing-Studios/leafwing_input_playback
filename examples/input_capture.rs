@@ -1,5 +1,7 @@
 use bevy::prelude::*;
-use leafwing_input_playback::input_capture::{InputCapturePlugin, UnifiedInputEvent};
+use leafwing_input_playback::{
+    input_capture::InputCapturePlugin, unified_input::UnifiedInputEvent,
+};
 
 fn main() {
     App::new()

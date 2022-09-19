@@ -5,7 +5,7 @@
 use bevy_app::{App, CoreStage, Plugin};
 use bevy_ecs::prelude::*;
 
-use crate::input_capture::UnifiedInputEvent;
+use crate::unified_input::UnifiedInputEvent;
 
 /// Reads from the [`UnifiedInput`] event stream to determine which events to play back.
 ///

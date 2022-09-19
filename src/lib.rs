@@ -5,3 +5,4 @@
 
 pub mod input_capture;
 pub mod input_playback;
+pub mod unified_input;
