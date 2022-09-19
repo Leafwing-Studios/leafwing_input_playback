@@ -9,7 +9,7 @@ use bevy_input::mouse::{MouseButtonInput, MouseWheel};
 use bevy_time::Time;
 use bevy_window::CursorMoved;
 
-use crate::unified_input::{FrameCount, UnifiedInputEvent};
+use crate::unified_input::{FrameCount, UnifiedInput};
 
 /// Captures user inputs from the assorted raw `Event` types
 ///
@@ -19,7 +19,7 @@ pub struct InputCapturePlugin;
 impl Plugin for InputCapturePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FrameCount>()
-            .add_event::<UnifiedInputEvent>()
+            .init_resource::<UnifiedInput>()
             .add_system_to_stage(CoreStage::First, frame_counter)
             .add_system_set_to_stage(
                 // Capture any mocked input as well
@@ -48,7 +48,7 @@ pub fn capture_mouse_input(
     mut mouse_button_events: EventReader<MouseButtonInput>,
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut cursor_moved_events: EventReader<CursorMoved>,
-    mut unified_input: EventWriter<UnifiedInputEvent>,
+    mut unified_input: ResMut<UnifiedInput>,
     frame_count: Res<FrameCount>,
     time: Res<Time>,
 ) {
@@ -58,46 +58,35 @@ pub fn capture_mouse_input(
     // BLOCKED: these events are arbitrarily ordered within a frame,
     // but we have no way to access their order from winit.
     // See https://github.com/bevyengine/bevy/issues/5984
-    for input_event in mouse_button_events.iter().cloned() {
-        unified_input.send(UnifiedInputEvent {
-            frame,
-            time_since_startup,
-            input_event: input_event.into(),
-        })
-    }
 
-    for input_event in mouse_wheel_events.iter().cloned() {
-        unified_input.send(UnifiedInputEvent {
-            frame,
-            time_since_startup,
-            input_event: input_event.into(),
-        })
-    }
+    unified_input.send_multiple(
+        frame,
+        time_since_startup,
+        mouse_button_events.iter().cloned(),
+    );
 
-    for input_event in cursor_moved_events.iter().cloned() {
-        unified_input.send(UnifiedInputEvent {
-            frame,
-            time_since_startup,
-            input_event: input_event.into(),
-        })
-    }
+    unified_input.send_multiple(
+        frame,
+        time_since_startup,
+        mouse_wheel_events.iter().cloned(),
+    );
+
+    unified_input.send_multiple(
+        frame,
+        time_since_startup,
+        cursor_moved_events.iter().cloned(),
+    );
 }
 
 /// Captures [`KeyCode`](bevy_input::keyboard::KeyCode) input from the [`MouseButtonInput`] stream
 pub fn capture_keyboard_input(
     mut keyboard_events: EventReader<KeyboardInput>,
-    mut unified_input: EventWriter<UnifiedInputEvent>,
+    mut unified_input: ResMut<UnifiedInput>,
     frame_count: Res<FrameCount>,
     time: Res<Time>,
 ) {
     let time_since_startup = time.time_since_startup();
     let frame = *frame_count;
 
-    for input_event in keyboard_events.iter().cloned() {
-        unified_input.send(UnifiedInputEvent {
-            frame,
-            time_since_startup,
-            input_event: input_event.into(),
-        })
-    }
+    unified_input.send_multiple(frame, time_since_startup, keyboard_events.iter().cloned());
 }
