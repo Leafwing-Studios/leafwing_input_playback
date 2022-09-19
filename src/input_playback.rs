@@ -8,7 +8,7 @@ use bevy_input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
 };
-use bevy_time::{Time, TimeSystem};
+use bevy_time::Time;
 use bevy_utils::Duration;
 use bevy_window::CursorMoved;
 
@@ -29,12 +29,12 @@ impl Plugin for InputPlaybackPlugin {
                 .add_system_to_stage(CoreStage::First, frame_counter);
         }
 
-        app.init_resource::<UnifiedInput>().add_system_to_stage(
-            CoreStage::First,
-            playback_unified_input
-                .after(frame_counter)
-                .after(TimeSystem),
-        );
+        app.init_resource::<UnifiedInput>()
+            .init_resource::<PlaybackStrategy>()
+            .add_system_to_stage(
+                CoreStage::First,
+                playback_unified_input.after(frame_counter),
+            );
     }
 }
 
