@@ -9,6 +9,7 @@ use bevy_input::{
     mouse::{MouseButtonInput, MouseWheel},
 };
 use bevy_time::Time;
+use bevy_utils::Duration;
 use bevy_window::CursorMoved;
 
 use crate::unified_input::{FrameCount, TimestampedInputEvent, UnifiedInput};
@@ -39,6 +40,14 @@ pub enum PlaybackStrategy {
     ///
     /// This strategy is faster, as you can turn off any frame rate limiting mechanism.
     FrameCount,
+    /// Plays events between the first and second [`Duration`], measured in time since app startup.
+    ///
+    /// This range is inclusive at the bottom, but exclusive at the top to avoid double-counting.
+    TimeRange(Duration, Duration),
+    /// Plays events between the first and second [`FrameCount`].
+    ///
+    /// This range is inclusive at the bottom, but exclusive at the top to avoid double-counting.
+    FrameRange(FrameCount, FrameCount),
     /// Does not playback any events.
     ///
     /// This is useful for interactive use cases, to temporarily disable sending events.
@@ -77,6 +86,14 @@ pub fn playback_unified_input(
         FrameCount => {
             let input_events = unified_input.iter_until_frame(*frame_count);
             send_playback_events(input_events, &mut input_writers);
+        }
+        TimeRange(start, end) => {
+            let input_events = unified_input.iter_between_times(start, end);
+            send_playback_events(input_events, &mut input_writers);
+        }
+        FrameRange(start, end) => {
+            let input_events = unified_input.iter_between_frames(start, end);
+            send_playback_events(input_events, &mut input_writers)
         }
         Paused => {
             // Do nothing

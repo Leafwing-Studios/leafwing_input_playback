@@ -156,6 +156,52 @@ impl UnifiedInput {
         self.events.sort_by(strategy);
     }
 
+    /// Returns an iterator over recorded events starting from (inclusive) the start time,
+    /// and until (exclusive) the end time. Note that this can re-read events:
+    /// the cursor is reset before searching for the start of the range.
+    ///
+    /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
+    #[must_use]
+    pub fn iter_between_times(
+        &mut self,
+        start_time_since_startup: Duration,
+        end_time_since_startup: Duration,
+    ) -> impl IntoIterator<Item = TimestampedInputEvent> {
+        debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
+        let mut result = Vec::with_capacity(self.events.len() - self.cursor);
+        let mut cursor = 0;
+        while start_time_since_startup <= self.events[cursor].time_since_startup
+            && self.events[cursor].time_since_startup < end_time_since_startup
+        {
+            result.push(self.events[cursor].clone());
+            cursor += 1;
+        }
+        self.cursor = cursor;
+        result
+    }
+
+    /// Returns an iterator over recorded events starting from (inclusive) the start frame,
+    /// and until (exclusive) the end frame. Note that this can re-read events:
+    /// the cursor is reset before searching for the start of the range.
+    ///
+    /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
+    #[must_use]
+    pub fn iter_between_frames(
+        &mut self,
+        start_frame: FrameCount,
+        end_frame: FrameCount,
+    ) -> impl IntoIterator<Item = TimestampedInputEvent> {
+        debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
+        let mut result = Vec::with_capacity(self.events.len());
+        let mut cursor = 0;
+        while start_frame <= self.events[cursor].frame && self.events[cursor].frame < end_frame {
+            result.push(self.events[cursor].clone());
+            cursor += 1;
+        }
+        self.cursor = cursor;
+        result
+    }
+
     /// Is this [`UnifiedInput`] sorted according to the specified [`SortingStrategy`]?
     pub fn is_sorted(&self, strategy: SortingStrategy) -> bool {
         match strategy {
