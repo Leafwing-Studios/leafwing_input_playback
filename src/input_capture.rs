@@ -2,10 +2,10 @@
 //!
 //! These are unified into a single [`UnifiedInput`] event stream, which can be played back
 use bevy_app::{App, CoreStage, Plugin};
-use bevy_core::Time;
 use bevy_ecs::prelude::*;
 use bevy_input::keyboard::KeyboardInput;
 use bevy_input::mouse::{MouseButtonInput, MouseWheel};
+use bevy_time::Time;
 use bevy_utils::Duration;
 use bevy_window::CursorMoved;
 
