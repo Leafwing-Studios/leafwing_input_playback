@@ -17,6 +17,7 @@ use crate::unified_input::{FrameCount, TimestampedInputEvent, UnifiedInput};
 /// Reads from the [`UnifiedInput`] event stream to determine which events to play back.
 ///
 /// Events are played back during [`CoreStage::First`] to accurately mimic the behavior of native `winit`-based inputs.
+/// Which events are played back are controlled via the [`PlaybackStrategy`] resource.
 pub struct InputPlaybackPlugin;
 
 impl Plugin for InputPlaybackPlugin {

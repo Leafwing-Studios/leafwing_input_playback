@@ -14,6 +14,7 @@ use crate::unified_input::{FrameCount, UnifiedInput};
 /// Captures user inputs from the assorted raw `Event` types
 ///
 /// These are collected into a [`UnifiedInput`] event stream.
+/// Which input modes (mouse, keyboard, etc) are captured is controlled via the [`InputModesCaptured`] resource.
 pub struct InputCapturePlugin;
 
 impl Plugin for InputCapturePlugin {
@@ -21,13 +22,34 @@ impl Plugin for InputCapturePlugin {
         app.init_resource::<FrameCount>()
             .init_resource::<UnifiedInput>()
             .add_system_to_stage(CoreStage::First, frame_counter)
-            .add_system_set_to_stage(
+            .add_system_to_stage(
                 // Capture any mocked input as well
                 CoreStage::Last,
-                SystemSet::new()
-                    .with_system(capture_mouse_input)
-                    .with_system(capture_keyboard_input),
+                capture_input,
             );
+    }
+}
+
+/// The input mechanisms captured via the [`InputCapturePlugin`].
+///
+/// By default, all supported input modes will be captured.
+#[derive(Debug, PartialEq, Clone)]
+pub struct InputModesCaptured {
+    /// Mouse buttons and mouse wheel inputs
+    pub mouse_buttons: bool,
+    /// Moving the mouse
+    pub mouse_motion: bool,
+    /// Keyboard inputs (both keycodes and scancodes)
+    pub keyboard: bool,
+}
+
+impl Default for InputModesCaptured {
+    fn default() -> Self {
+        InputModesCaptured {
+            mouse_buttons: true,
+            mouse_motion: true,
+            keyboard: true,
+        }
     }
 }
 
@@ -38,17 +60,16 @@ pub fn frame_counter(mut frame_count: ResMut<FrameCount>) {
     frame_count.0 += 1;
 }
 
-/// Captures mouse-driven input from the [`MouseButtonInput`] event stream
+/// Captures input from the [`bevy_window`] and [`bevy_input`] event streams.
 ///
-/// Limitations:
-///  - the unit of mouse scrolling is discarded; when played back this is assumed to be pixels
-///  - mouse inputs performed with a locked window will be lost, as [`MouseMotion`](bevy::input::mouse::MouseMotion) events are not captured
-///  - this is not robust to multiple windows; the window that the mouse is on is lost
-pub fn capture_mouse_input(
+/// The input modes can be controlled via the [`InputModesCaptured`] resource.
+pub fn capture_input(
     mut mouse_button_events: EventReader<MouseButtonInput>,
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut cursor_moved_events: EventReader<CursorMoved>,
+    mut keyboard_events: EventReader<KeyboardInput>,
     mut unified_input: ResMut<UnifiedInput>,
+    input_modes_captured: Res<InputModesCaptured>,
     frame_count: Res<FrameCount>,
     time: Res<Time>,
 ) {
@@ -59,34 +80,29 @@ pub fn capture_mouse_input(
     // but we have no way to access their order from winit.
     // See https://github.com/bevyengine/bevy/issues/5984
 
-    unified_input.send_multiple(
-        frame,
-        time_since_startup,
-        mouse_button_events.iter().cloned(),
-    );
+    if input_modes_captured.mouse_buttons {
+        unified_input.send_multiple(
+            frame,
+            time_since_startup,
+            mouse_button_events.iter().cloned(),
+        );
 
-    unified_input.send_multiple(
-        frame,
-        time_since_startup,
-        mouse_wheel_events.iter().cloned(),
-    );
+        unified_input.send_multiple(
+            frame,
+            time_since_startup,
+            mouse_wheel_events.iter().cloned(),
+        );
+    }
 
-    unified_input.send_multiple(
-        frame,
-        time_since_startup,
-        cursor_moved_events.iter().cloned(),
-    );
-}
+    if input_modes_captured.mouse_motion {
+        unified_input.send_multiple(
+            frame,
+            time_since_startup,
+            cursor_moved_events.iter().cloned(),
+        );
+    }
 
-/// Captures [`KeyCode`](bevy_input::keyboard::KeyCode) input from the [`MouseButtonInput`] stream
-pub fn capture_keyboard_input(
-    mut keyboard_events: EventReader<KeyboardInput>,
-    mut unified_input: ResMut<UnifiedInput>,
-    frame_count: Res<FrameCount>,
-    time: Res<Time>,
-) {
-    let time_since_startup = time.time_since_startup();
-    let frame = *frame_count;
-
-    unified_input.send_multiple(frame, time_since_startup, keyboard_events.iter().cloned());
+    if input_modes_captured.keyboard {
+        unified_input.send_multiple(frame, time_since_startup, keyboard_events.iter().cloned());
+    }
 }
