@@ -8,11 +8,12 @@ use bevy_input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
 };
-use bevy_time::Time;
+use bevy_time::{Time, TimeSystem};
 use bevy_utils::Duration;
 use bevy_window::CursorMoved;
 
-use crate::unified_input::{FrameCount, TimestampedInputEvent, UnifiedInput};
+use crate::frame_counting::{frame_counter, FrameCount};
+use crate::unified_input::{TimestampedInputEvent, UnifiedInput};
 
 /// Reads from the [`UnifiedInput`] event stream to determine which events to play back.
 ///
@@ -22,8 +23,18 @@ pub struct InputPlaybackPlugin;
 
 impl Plugin for InputPlaybackPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<UnifiedInput>()
-            .add_system_to_stage(CoreStage::First, playback_unified_input);
+        // Avoid double-adding frame_counter
+        if !app.world.contains_resource::<FrameCount>() {
+            app.init_resource::<FrameCount>()
+                .add_system_to_stage(CoreStage::First, frame_counter);
+        }
+
+        app.init_resource::<UnifiedInput>().add_system_to_stage(
+            CoreStage::First,
+            playback_unified_input
+                .after(frame_counter)
+                .after(TimeSystem),
+        );
     }
 }
 

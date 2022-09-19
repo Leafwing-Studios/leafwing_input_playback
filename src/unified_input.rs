@@ -7,6 +7,8 @@ use bevy_input::mouse::{MouseButtonInput, MouseWheel};
 use bevy_utils::Duration;
 use bevy_window::CursorMoved;
 
+use crate::frame_counting::FrameCount;
+
 /// A timestamped device-agnostic user-input event
 ///
 /// These are re-emitted as events, and commonly serialized to disk
@@ -296,12 +298,6 @@ pub enum SortingStrategy {
     /// Sort by ascending time since startup
     TimeSinceStartup,
 }
-
-/// The number of frames that have elapsed since the app started
-///
-/// Updated in [`time_tracker`] during [`CoreStage::First`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FrameCount(pub u64);
 
 /// Collects input-relevant events for use in [`UnifiedInput`]
 // BLOCKED: this should be PartialEq, but we're blocked on https://github.com/bevyengine/bevy/issues/6024

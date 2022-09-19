@@ -9,7 +9,8 @@ use bevy_input::mouse::{MouseButtonInput, MouseWheel};
 use bevy_time::Time;
 use bevy_window::CursorMoved;
 
-use crate::unified_input::{FrameCount, UnifiedInput};
+use crate::frame_counting::{frame_counter, FrameCount};
+use crate::unified_input::UnifiedInput;
 
 /// Captures user inputs from the assorted raw `Event` types
 ///
@@ -19,14 +20,17 @@ pub struct InputCapturePlugin;
 
 impl Plugin for InputCapturePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<FrameCount>()
-            .init_resource::<UnifiedInput>()
-            .add_system_to_stage(CoreStage::First, frame_counter)
-            .add_system_to_stage(
-                // Capture any mocked input as well
-                CoreStage::Last,
-                capture_input,
-            );
+        // Avoid double-adding frame_counter
+        if !app.world.contains_resource::<FrameCount>() {
+            app.init_resource::<FrameCount>()
+                .add_system_to_stage(CoreStage::First, frame_counter);
+        }
+
+        app.init_resource::<UnifiedInput>().add_system_to_stage(
+            // Capture any mocked input as well
+            CoreStage::Last,
+            capture_input,
+        );
     }
 }
 
@@ -51,13 +55,6 @@ impl Default for InputModesCaptured {
             keyboard: true,
         }
     }
-}
-
-/// Increases the value of the [`FrameCount`] resource by 1 every frame
-///
-/// This system should run during [`CoreStage::First`].
-pub fn frame_counter(mut frame_count: ResMut<FrameCount>) {
-    frame_count.0 += 1;
 }
 
 /// Captures input from the [`bevy_window`] and [`bevy_input`] event streams.
