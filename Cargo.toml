@@ -19,25 +19,20 @@ members = ["./", "tools/ci"]
 
 [features]
 default = []
-ui = ["bevy_ui"]
 
 [dependencies]
-bevy_app = {version = "0.7", default-features = false}
-bevy_transform = {version = "0.7", default-features = false}
-bevy_ecs = {version = "0.7", default-features = false}
-bevy_input = {version = "0.7", default-features = false, features = ["serialize"]}
-bevy_math = {version = "0.7", default-features = false}
-bevy_utils = {version = "0.7", default-features = false}
-bevy_ui = {version = "0.7", default-features = false, optional = true}
-bevy_window = {version = "0.7", default-features = false}
+bevy_app = {version = "0.8", default-features = false}
+bevy_ecs = {version = "0.8", default-features = false}
+bevy_input = {version = "0.8", default-features = false, features = ["serialize"]}
+bevy_time = {version = "0.8", default-features = false}
+bevy_utils = {version = "0.8", default-features = false}
+bevy_window = {version = "0.8", default-features = false}
 
-petitset = {version = "0.2", features = ["serde_compat"]}
-derive_more = {version = "0.99", default-features = false, features = ["display", "error"]}
-itertools = "0.10"
+
 serde = {version = "1.0", features = ["derive"]}
 
 [dev-dependencies]
-bevy = {version = "0.7", default-features = false}
+bevy = {version = "0.8", default-features = true}
 
 [lib]
 name = "leafwing_input_playback"
