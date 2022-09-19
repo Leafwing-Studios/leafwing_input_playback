@@ -1,17 +1,11 @@
 //! Captures user input from assorted raw `Event` types.
 //!
 //! These are unified into a single [`UnifiedInput`] event stream, which can be played back
-use crate::axislike::AxisPairType;
-use crate::user_input::InputButton;
-
 use bevy_app::{App, CoreStage, Plugin};
 use bevy_core::Time;
 use bevy_ecs::prelude::*;
-use bevy_input::gamepad::{Gamepad, GamepadAxisType, GamepadEvent, GamepadEventType};
 use bevy_input::keyboard::KeyboardInput;
 use bevy_input::mouse::{MouseButtonInput, MouseWheel};
-use bevy_input::ElementState;
-/// via the provided [`input_mocking`](crate::input_mocking) functionality
 use bevy_utils::Duration;
 use bevy_window::CursorMoved;
 
@@ -23,9 +17,9 @@ pub struct UnifiedInput {
     /// The number of frames that have elapsed since the app began
     pub frame: FrameCount,
     /// The amount of time that has elapsed since the app began
-    pub time: Duration,
+    pub time_since_startup: Duration,
     /// The [`InputEvent`] that was captured
-    pub event: InputEvent,
+    pub input_event: InputEvent,
 }
 
 /// The number of frames that have elapsed since the app started
@@ -35,32 +29,37 @@ pub struct UnifiedInput {
 pub struct FrameCount(pub u64);
 
 /// Collects input-relevant events for use in [`UnifiedInput`]
+#[allow(missing_docs)]
 #[derive(Debug, Clone)]
 pub enum InputEvent {
-    /// The [`InputButton`] was pressed
-    Pressed(InputButton),
-    /// The [`InputButton`] was released
-    Released(InputButton),
-    /// A two-dimensional axis-like input was changed
-    AxisPairChanged {
-        /// Which axis changed
-        axis: AxisPairType,
-        /// The new horizontal value of the axis
-        x: f32,
-        /// The new vertical value of the axis
-        y: f32,
-    },
-    /// A gamepad axis changed
-    GamepadAxisChanged {
-        /// Which gamepad axis changed
-        axis: GamepadAxisType,
-        /// The new value of the axis
-        value: f32,
-    },
-    /// A gamepad was connected to the computer
-    GamepadConnected(Gamepad),
-    /// A gamepad was disconnected from the computer
-    GamepadDisconnected(Gamepad),
+    Keyboard(KeyboardInput),
+    MouseButton(MouseButtonInput),
+    MouseWheel(MouseWheel),
+    CursorMoved(CursorMoved),
+}
+
+impl From<KeyboardInput> for InputEvent {
+    fn from(event: KeyboardInput) -> Self {
+        InputEvent::Keyboard(event)
+    }
+}
+
+impl From<MouseButtonInput> for InputEvent {
+    fn from(event: MouseButtonInput) -> Self {
+        InputEvent::MouseButton(event)
+    }
+}
+
+impl From<MouseWheel> for InputEvent {
+    fn from(event: MouseWheel) -> Self {
+        InputEvent::MouseWheel(event)
+    }
+}
+
+impl From<CursorMoved> for InputEvent {
+    fn from(event: CursorMoved) -> Self {
+        InputEvent::CursorMoved(event)
+    }
 }
 
 /// Captures user inputs from the assorted raw `Event` types
@@ -75,8 +74,7 @@ impl Plugin for InputCapturePlugin {
                 CoreStage::PreUpdate,
                 SystemSet::new()
                     .with_system(capture_mouse_input)
-                    .with_system(capture_keyboard_input)
-                    .with_system(capture_gamepad_input),
+                    .with_system(capture_keyboard_input),
             );
     }
 }
@@ -102,104 +100,52 @@ pub fn capture_mouse_input(
     frame_count: Res<FrameCount>,
     time: Res<Time>,
 ) {
-    for mouse_button_event in mouse_button_events.iter() {
-        let input_event = match mouse_button_event.state {
-            ElementState::Pressed => InputEvent::Pressed(mouse_button_event.button.into()),
-            ElementState::Released => InputEvent::Released(mouse_button_event.button.into()),
-        };
+    let time_since_startup = time.time_since_startup();
+    let frame = *frame_count;
 
+    // BLOCKED: these events are arbitrarily ordered within a frame,
+    // but we have no way to access their order from winit.
+    // See https://github.com/bevyengine/bevy/issues/5984
+    for input_event in mouse_button_events.iter().cloned() {
         unified_input.send(UnifiedInput {
-            frame: *frame_count,
-            time: time.time_since_startup(),
-            event: input_event,
+            frame,
+            time_since_startup,
+            input_event: input_event.into(),
         })
     }
 
-    for mouse_wheel_event in mouse_wheel_events.iter() {
-        let input_event = InputEvent::AxisPairChanged {
-            axis: AxisPairType::ScrollWheel,
-            x: mouse_wheel_event.x,
-            y: mouse_wheel_event.y,
-        };
-
+    for input_event in mouse_wheel_events.iter().cloned() {
         unified_input.send(UnifiedInput {
-            frame: *frame_count,
-            time: time.time_since_startup(),
-            event: input_event,
+            frame,
+            time_since_startup,
+            input_event: input_event.into(),
         })
     }
 
-    for cursor_moved_event in cursor_moved_events.iter() {
-        let input_event = InputEvent::AxisPairChanged {
-            axis: AxisPairType::Mouse,
-            x: cursor_moved_event.position.x,
-            y: cursor_moved_event.position.y,
-        };
-
+    for input_event in cursor_moved_events.iter().cloned() {
         unified_input.send(UnifiedInput {
-            frame: *frame_count,
-            time: time.time_since_startup(),
-            event: input_event,
+            frame,
+            time_since_startup,
+            input_event: input_event.into(),
         })
     }
 }
 
 /// Captures [`KeyCode`](bevy_input::keyboard::KeyCode) input from the [`MouseButtonInput`] stream
 pub fn capture_keyboard_input(
-    mut raw_events: EventReader<KeyboardInput>,
+    mut keyboard_events: EventReader<KeyboardInput>,
     mut unified_input: EventWriter<UnifiedInput>,
     frame_count: Res<FrameCount>,
     time: Res<Time>,
 ) {
-    for raw_event in raw_events.iter() {
-        // Only keyboard events that are coercible to `KeyCode` are currently usable as Input in Bevy
-        // so all other keyboard events are ignored
-        if let Some(key_code) = raw_event.key_code {
-            let input_event = match raw_event.state {
-                ElementState::Pressed => InputEvent::Pressed(key_code.into()),
-                ElementState::Released => InputEvent::Released(key_code.into()),
-            };
+    let time_since_startup = time.time_since_startup();
+    let frame = *frame_count;
 
-            unified_input.send(UnifiedInput {
-                frame: *frame_count,
-                time: time.time_since_startup(),
-                event: input_event,
-            });
-        }
-    }
-}
-
-/// Captures [`InputEvent`]s from the [`GamepadEvent`] stream
-pub fn capture_gamepad_input(
-    mut raw_events: EventReader<GamepadEvent>,
-    mut unified_input: EventWriter<UnifiedInput>,
-    frame_count: Res<FrameCount>,
-    time: Res<Time>,
-) {
-    use GamepadEventType::*;
-
-    for raw_event in raw_events.iter() {
-        let gamepad = raw_event.0;
-
-        let input_event = match raw_event.1 {
-            Connected => InputEvent::GamepadConnected(gamepad),
-            Disconnected => InputEvent::GamepadDisconnected(gamepad),
-            ButtonChanged(button, value) => {
-                if value == 1.0 {
-                    InputEvent::Pressed(button.into())
-                } else if value == 0.0 {
-                    InputEvent::Released(button.into())
-                } else {
-                    todo!()
-                }
-            }
-            AxisChanged(axis, value) => InputEvent::GamepadAxisChanged { axis, value },
-        };
-
+    for input_event in keyboard_events.iter().cloned() {
         unified_input.send(UnifiedInput {
-            frame: *frame_count,
-            time: time.time_since_startup(),
-            event: input_event,
+            frame,
+            time_since_startup,
+            input_event: input_event.into(),
         })
     }
 }
