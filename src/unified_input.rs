@@ -118,7 +118,9 @@ impl UnifiedInput {
     ) -> impl IntoIterator<Item = TimestampedInputEvent> {
         debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
-        while self.events[self.cursor].time_since_startup < time_since_startup {
+        while self.cursor < self.events.len()
+            && self.events[self.cursor].time_since_startup < time_since_startup
+        {
             result.push(self.events[self.cursor].clone());
             self.cursor += 1;
         }
@@ -135,27 +137,14 @@ impl UnifiedInput {
     ) -> impl IntoIterator<Item = TimestampedInputEvent> {
         debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
-        while self.events[self.cursor].frame < frame {
+        while self.cursor < self.events.len()
+            && self.events[self.cursor].frame < frame
+            && self.cursor < self.events.len()
+        {
             result.push(self.events[self.cursor].clone());
             self.cursor += 1;
         }
         result
-    }
-
-    /// Sorts the input stream by either [`Time::time_since_startup`] or [`FrameCount`].
-    pub fn sort(&mut self, strategy: SortingStrategy) {
-        let strategy = match strategy {
-            SortingStrategy::TimeSinceStartup => {
-                |a: &TimestampedInputEvent, b: &TimestampedInputEvent| {
-                    a.time_since_startup.cmp(&b.time_since_startup)
-                }
-            }
-            SortingStrategy::FrameCount => {
-                |a: &TimestampedInputEvent, b: &TimestampedInputEvent| a.frame.cmp(&b.frame)
-            }
-        };
-
-        self.events.sort_by(strategy);
     }
 
     /// Returns an iterator over recorded events starting from (inclusive) the start time,
@@ -172,7 +161,8 @@ impl UnifiedInput {
         debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
         let mut cursor = 0;
-        while start_time_since_startup <= self.events[cursor].time_since_startup
+        while self.cursor < self.events.len()
+            && start_time_since_startup <= self.events[cursor].time_since_startup
             && self.events[cursor].time_since_startup < end_time_since_startup
         {
             result.push(self.events[cursor].clone());
@@ -196,12 +186,31 @@ impl UnifiedInput {
         debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
         let mut result = Vec::with_capacity(self.events.len());
         let mut cursor = 0;
-        while start_frame <= self.events[cursor].frame && self.events[cursor].frame < end_frame {
+        while self.cursor < self.events.len()
+            && start_frame <= self.events[cursor].frame
+            && self.events[cursor].frame < end_frame
+        {
             result.push(self.events[cursor].clone());
             cursor += 1;
         }
         self.cursor = cursor;
         result
+    }
+
+    /// Sorts the input stream by either [`Time::time_since_startup`] or [`FrameCount`].
+    pub fn sort(&mut self, strategy: SortingStrategy) {
+        let strategy = match strategy {
+            SortingStrategy::TimeSinceStartup => {
+                |a: &TimestampedInputEvent, b: &TimestampedInputEvent| {
+                    a.time_since_startup.cmp(&b.time_since_startup)
+                }
+            }
+            SortingStrategy::FrameCount => {
+                |a: &TimestampedInputEvent, b: &TimestampedInputEvent| a.frame.cmp(&b.frame)
+            }
+        };
+
+        self.events.sort_by(strategy);
     }
 
     /// Is this [`UnifiedInput`] sorted according to the specified [`SortingStrategy`]?
