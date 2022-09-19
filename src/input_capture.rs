@@ -47,13 +47,25 @@ pub struct InputModesCaptured {
     pub keyboard: bool,
 }
 
+impl InputModesCaptured {
+    /// Disables all input capturing
+    pub const DISABLE_ALL: InputModesCaptured = InputModesCaptured {
+        mouse_buttons: false,
+        mouse_motion: false,
+        keyboard: false,
+    };
+
+    /// Captures all supported input modes
+    pub const ENABLE_ALL: InputModesCaptured = InputModesCaptured {
+        mouse_buttons: true,
+        mouse_motion: true,
+        keyboard: true,
+    };
+}
+
 impl Default for InputModesCaptured {
     fn default() -> Self {
-        InputModesCaptured {
-            mouse_buttons: true,
-            mouse_motion: true,
-            keyboard: true,
-        }
+        InputModesCaptured::ENABLE_ALL
     }
 }
 
