@@ -4,3 +4,4 @@
 #![doc = include_str!("../README.md")]
 
 pub mod input_capture;
+pub mod input_playback;
