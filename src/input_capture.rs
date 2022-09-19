@@ -69,9 +69,12 @@ pub struct InputCapturePlugin;
 
 impl Plugin for InputCapturePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system_to_stage(CoreStage::First, frame_counter)
+        app.init_resource::<FrameCount>()
+            .add_event::<UnifiedInput>()
+            .add_system_to_stage(CoreStage::First, frame_counter)
             .add_system_set_to_stage(
-                CoreStage::PreUpdate,
+                // Capture any mocked input as well
+                CoreStage::Last,
                 SystemSet::new()
                     .with_system(capture_mouse_input)
                     .with_system(capture_keyboard_input),
