@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use leafwing_input_playback::{
     input_capture::{InputCapturePlugin, InputModesCaptured},
-    input_playback::InputPlaybackPlugin,
+    input_playback::{InputPlaybackPlugin, PlaybackStrategy},
 };
 
 fn main() {
@@ -10,15 +10,18 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(InputCapturePlugin)
         .add_plugin(InputPlaybackPlugin)
-        // Disable all input capture to start
+        // Disable all input capture and playback to start
         .insert_resource(InputModesCaptured::DISABLE_ALL)
+        .insert_resource(PlaybackStrategy::Paused)
         // Creates a little game that spawns decaying boxes where the player clicks
         .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
         .add_startup_system(setup)
         .add_system(spawn_boxes)
         .add_system(decay_boxes)
-        // Toggle recording
-        // Toggle playback
+        // Toggle input_capture using Space
+        .add_system(toggle_input_capture)
+        // Toggle playback using Enter
+        .add_system(toggle_input_playback)
         .run()
 }
 
@@ -83,6 +86,45 @@ fn decay_boxes(mut query: Query<(Entity, &mut Transform), With<Box>>, mut comman
             commands.entity(entity).despawn();
         } else {
             transform.scale *= SHRINK_FACTOR;
+        }
+    }
+}
+
+fn toggle_input_capture(
+    mut input_modes: ResMut<InputModesCaptured>,
+    keyboard_input: Res<Input<KeyCode>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        if !input_modes.mouse_motion {
+            *input_modes = InputModesCaptured {
+                mouse_buttons: true,
+                mouse_motion: true,
+                ..default()
+            };
+
+            info!("Input is now being captured.");
+        } else {
+            *input_modes = InputModesCaptured::DISABLE_ALL;
+            info!("Input is no longer being captured.");
+        }
+    }
+}
+
+fn toggle_input_playback(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut playback_strategy: ResMut<PlaybackStrategy>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Return) {
+        *playback_strategy = match *playback_strategy {
+            PlaybackStrategy::FrameCount => {
+                info!("Input playback is now paused.");
+                PlaybackStrategy::Paused
+            }
+            PlaybackStrategy::Paused => {
+                info!("Input is playing back.");
+                PlaybackStrategy::FrameCount
+            }
+            _ => unreachable!(),
         }
     }
 }
