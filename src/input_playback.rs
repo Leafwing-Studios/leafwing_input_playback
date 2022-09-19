@@ -5,7 +5,7 @@
 use bevy_app::{App, CoreStage, Plugin};
 use bevy_ecs::prelude::*;
 
-use crate::input_capture::UnifiedInput;
+use crate::input_capture::UnifiedInputEvent;
 
 /// Reads from the [`UnifiedInput`] event stream to determine which events to play back.
 ///
@@ -14,9 +14,9 @@ pub struct InputPlaybackPlugin;
 
 impl Plugin for InputPlaybackPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<UnifiedInput>()
+        app.add_event::<UnifiedInputEvent>()
             .add_system_to_stage(CoreStage::First, playback_unified_input);
     }
 }
 
-fn playback_unified_input(unified_input: Res<UnifiedInput>) {}
+fn playback_unified_input(unified_input: Res<UnifiedInputEvent>) {}

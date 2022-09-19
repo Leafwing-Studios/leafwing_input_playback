@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use leafwing_input_playback::input_capture::{InputCapturePlugin, UnifiedInput};
+use leafwing_input_playback::input_capture::{InputCapturePlugin, UnifiedInputEvent};
 
 fn main() {
     App::new()
@@ -9,7 +9,7 @@ fn main() {
         .run()
 }
 
-fn debug_input_capture(mut captured_input: EventReader<UnifiedInput>) {
+fn debug_input_capture(mut captured_input: EventReader<UnifiedInputEvent>) {
     for input_event in captured_input.iter() {
         dbg!(input_event);
     }
