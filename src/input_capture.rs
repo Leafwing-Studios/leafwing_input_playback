@@ -36,7 +36,7 @@ impl Plugin for InputCapturePlugin {
     }
 }
 
-/// The input mechanisms captured via the [`InputCapturePlugin`].
+/// The input mechanisms captured via the [`InputCapturePlugin`], configured as a resource.
 ///
 /// By default, all supported input modes will be captured.
 #[derive(Debug, PartialEq, Clone)]
