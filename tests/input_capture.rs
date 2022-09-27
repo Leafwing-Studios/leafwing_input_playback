@@ -1,8 +1,8 @@
 use bevy::input::keyboard::KeyboardInput;
+use bevy::input::mouse::MouseButtonInput;
+use bevy::input::ButtonState;
 use bevy::input::InputPlugin;
 use bevy::prelude::*;
-use bevy_input::mouse::MouseButtonInput;
-use bevy_input::ButtonState;
 
 use bevy::window::WindowPlugin;
 use leafwing_input_playback::frame_counting::FrameCount;
@@ -26,14 +26,20 @@ const TEST_MOUSE: MouseButtonInput = MouseButtonInput {
     state: ButtonState::Pressed,
 };
 
-#[test]
-fn capture_sent_events() {
+fn capture_app() -> App {
     let mut app = App::new();
 
     app.add_plugins(MinimalPlugins)
         .add_plugin(WindowPlugin)
         .add_plugin(InputPlugin)
         .add_plugin(InputCapturePlugin);
+
+    app
+}
+
+#[test]
+fn capture_sent_events() {
+    let mut app = capture_app();
 
     let mut keyboard_events = app.world.resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
@@ -46,12 +52,7 @@ fn capture_sent_events() {
 
 #[test]
 fn identity_of_sent_events() {
-    let mut app = App::new();
-
-    app.add_plugins(MinimalPlugins)
-        .add_plugin(WindowPlugin)
-        .add_plugin(InputPlugin)
-        .add_plugin(InputCapturePlugin);
+    let mut app = capture_app();
 
     let mut keyboard_events = app.world.resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
@@ -79,12 +80,7 @@ fn identity_of_sent_events() {
 
 #[test]
 fn framecount_of_sent_events() {
-    let mut app = App::new();
-
-    app.add_plugins(MinimalPlugins)
-        .add_plugin(WindowPlugin)
-        .add_plugin(InputPlugin)
-        .add_plugin(InputCapturePlugin);
+    let mut app = capture_app();
 
     let mut keyboard_events = app.world.resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
@@ -109,12 +105,7 @@ fn framecount_of_sent_events() {
 
 #[test]
 fn toggle_input_capture() {
-    let mut app = App::new();
-
-    app.add_plugins(MinimalPlugins)
-        .add_plugin(WindowPlugin)
-        .add_plugin(InputPlugin)
-        .add_plugin(InputCapturePlugin);
+    let mut app = capture_app();
 
     let mut keyboard_events = app.world.resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
