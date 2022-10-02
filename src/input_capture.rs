@@ -1,6 +1,6 @@
-//! Captures user input from assorted raw [`Event`] types.
+//! Captures user input from assorted raw [`Event`](bevy_ecs::event::Event) types.
 //!
-//! These are unified into a single [`UnifiedInput`] resource, which can be played back.
+//! These are unified into a single [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource, which can be played back.
 
 use bevy_app::{App, CoreStage, Plugin};
 use bevy_ecs::prelude::*;
@@ -10,11 +10,11 @@ use bevy_time::Time;
 use bevy_window::CursorMoved;
 
 use crate::frame_counting::{frame_counter, FrameCount};
-use crate::unified_input::UnifiedInput;
+use crate::timestamped_input::TimestampedInputs;
 
 /// Captures user inputs from the assorted raw `Event` types
 ///
-/// These are collected into a [`UnifiedInput`] event stream.
+/// These are collected into a [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource.
 /// Which input modes (mouse, keyboard, etc) are captured is controlled via the [`InputModesCaptured`] resource.
 pub struct InputCapturePlugin;
 
@@ -26,7 +26,7 @@ impl Plugin for InputCapturePlugin {
                 .add_system_to_stage(CoreStage::First, frame_counter);
         }
 
-        app.init_resource::<UnifiedInput>()
+        app.init_resource::<TimestampedInputs>()
             .init_resource::<InputModesCaptured>()
             .add_system_to_stage(
                 // Capture any mocked input as well
@@ -79,7 +79,7 @@ pub fn capture_input(
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut cursor_moved_events: EventReader<CursorMoved>,
     mut keyboard_events: EventReader<KeyboardInput>,
-    mut unified_input: ResMut<UnifiedInput>,
+    mut timestamped_input: ResMut<TimestampedInputs>,
     input_modes_captured: Res<InputModesCaptured>,
     frame_count: Res<FrameCount>,
     time: Res<Time>,
@@ -92,13 +92,13 @@ pub fn capture_input(
     // See https://github.com/bevyengine/bevy/issues/5984
 
     if input_modes_captured.mouse_buttons {
-        unified_input.send_multiple(
+        timestamped_input.send_multiple(
             frame,
             time_since_startup,
             mouse_button_events.iter().cloned(),
         );
 
-        unified_input.send_multiple(
+        timestamped_input.send_multiple(
             frame,
             time_since_startup,
             mouse_wheel_events.iter().cloned(),
@@ -106,7 +106,7 @@ pub fn capture_input(
     }
 
     if input_modes_captured.mouse_motion {
-        unified_input.send_multiple(
+        timestamped_input.send_multiple(
             frame,
             time_since_startup,
             cursor_moved_events.iter().cloned(),
@@ -114,6 +114,6 @@ pub fn capture_input(
     }
 
     if input_modes_captured.keyboard {
-        unified_input.send_multiple(frame, time_since_startup, keyboard_events.iter().cloned());
+        timestamped_input.send_multiple(frame, time_since_startup, keyboard_events.iter().cloned());
     }
 }

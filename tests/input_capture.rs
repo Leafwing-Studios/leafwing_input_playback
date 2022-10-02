@@ -7,7 +7,9 @@ use bevy::prelude::*;
 use bevy::window::WindowPlugin;
 use leafwing_input_playback::frame_counting::FrameCount;
 use leafwing_input_playback::input_capture::{InputCapturePlugin, InputModesCaptured};
-use leafwing_input_playback::unified_input::{InputEvent, TimestampedInputEvent, UnifiedInput};
+use leafwing_input_playback::timestamped_input::{
+    InputEvent, TimestampedInputEvent, TimestampedInputs,
+};
 
 const TEST_PRESS: KeyboardInput = KeyboardInput {
     scan_code: 1,
@@ -46,8 +48,8 @@ fn capture_sent_events() {
     keyboard_events.send(TEST_RELEASE);
 
     app.update();
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.len(), 2);
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.len(), 2);
 }
 
 #[test]
@@ -64,8 +66,8 @@ fn identity_of_sent_events() {
     mouse_events.send(TEST_MOUSE);
 
     app.update();
-    let mut unified_input = app.world.resource_mut::<UnifiedInput>();
-    let mut iterator = unified_input.iter_all().into_iter();
+    let mut timestamped_input = app.world.resource_mut::<TimestampedInputs>();
+    let mut iterator = timestamped_input.iter_all().into_iter();
 
     let first_event: TimestampedInputEvent = iterator.next().unwrap();
     let second_event: TimestampedInputEvent = iterator.next().unwrap();
@@ -91,8 +93,8 @@ fn framecount_of_sent_events() {
     mouse_events.send(TEST_MOUSE);
 
     app.update();
-    let mut unified_input = app.world.resource_mut::<UnifiedInput>();
-    let mut iterator = unified_input.iter_all().into_iter();
+    let mut timestamped_input = app.world.resource_mut::<TimestampedInputs>();
+    let mut iterator = timestamped_input.iter_all().into_iter();
 
     let first_event: TimestampedInputEvent = iterator.next().unwrap();
     let second_event: TimestampedInputEvent = iterator.next().unwrap();
@@ -114,8 +116,8 @@ fn toggle_input_capture() {
     app.update();
 
     // Inputs are captured while input capturing is enabled by default
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.len(), 2);
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.len(), 2);
 
     // Disabling input capture
     let mut input_modes_captured = app.world.resource_mut::<InputModesCaptured>();
@@ -128,8 +130,8 @@ fn toggle_input_capture() {
     app.update();
 
     // Inputs are not captured while input capturing is disabled
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.len(), 2);
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.len(), 2);
 
     // Partially re-enabling input capture
     let mut input_modes_captured = app.world.resource_mut::<InputModesCaptured>();
@@ -148,6 +150,6 @@ fn toggle_input_capture() {
     app.update();
 
     // Only the keyboard events were captured
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.len(), 3);
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.len(), 3);
 }

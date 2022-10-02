@@ -13,7 +13,7 @@ use leafwing_input_playback::input_capture::InputCapturePlugin;
 use leafwing_input_playback::input_capture::InputModesCaptured;
 use leafwing_input_playback::input_playback::InputPlaybackPlugin;
 use leafwing_input_playback::input_playback::PlaybackStrategy;
-use leafwing_input_playback::unified_input::UnifiedInput;
+use leafwing_input_playback::timestamped_input::TimestampedInputs;
 
 const TEST_PRESS: KeyboardInput = KeyboardInput {
     scan_code: 1,
@@ -40,16 +40,16 @@ fn playback_app(strategy: PlaybackStrategy) -> App {
     app
 }
 
-fn simple_unified_input() -> UnifiedInput {
-    let mut inputs = UnifiedInput::default();
+fn simple_timestamped_input() -> TimestampedInputs {
+    let mut inputs = TimestampedInputs::default();
     inputs.send(FrameCount(1), Duration::from_secs(0), TEST_PRESS.into());
     inputs.send(FrameCount(2), Duration::from_secs(0), TEST_RELEASE.into());
 
     inputs
 }
 
-fn complex_unified_input() -> UnifiedInput {
-    let mut inputs = UnifiedInput::default();
+fn complex_timestamped_input() -> TimestampedInputs {
+    let mut inputs = TimestampedInputs::default();
     inputs.send(FrameCount(0), Duration::from_secs(0), TEST_PRESS.into());
     inputs.send(FrameCount(1), Duration::from_secs(1), TEST_RELEASE.into());
     inputs.send(FrameCount(2), Duration::from_secs(2), TEST_PRESS.into());
@@ -65,7 +65,7 @@ fn minimal_playback() {
     let input_events = app.world.resource::<Events<KeyboardInput>>();
     assert_eq!(input_events.len(), 0);
 
-    *app.world.resource_mut::<UnifiedInput>() = simple_unified_input();
+    *app.world.resource_mut::<TimestampedInputs>() = simple_timestamped_input();
     app.update();
 
     // By default, only events up to the current frame are played back
@@ -120,7 +120,7 @@ fn repeated_playback() {
     let input_events = app.world.resource::<Events<KeyboardInput>>();
     assert_eq!(input_events.len(), 0);
 
-    *app.world.resource_mut::<UnifiedInput>() = simple_unified_input();
+    *app.world.resource_mut::<TimestampedInputs>() = simple_timestamped_input();
     for _ in 1..10 {
         app.update();
     }
@@ -130,8 +130,8 @@ fn repeated_playback() {
     assert_eq!(input_events.len(), 0);
 
     // Reset our tracking
-    let mut unified_input: Mut<UnifiedInput> = app.world.resource_mut();
-    unified_input.reset_cursor();
+    let mut timestamped_input: Mut<TimestampedInputs> = app.world.resource_mut();
+    timestamped_input.reset_cursor();
 
     // Play the events again
     app.update();
@@ -143,49 +143,49 @@ fn repeated_playback() {
 #[test]
 fn playback_strategy_paused() {
     let mut app = playback_app(PlaybackStrategy::Paused);
-    *app.world.resource_mut::<UnifiedInput>() = complex_unified_input();
+    *app.world.resource_mut::<TimestampedInputs>() = complex_timestamped_input();
 
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.cursor, 0);
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.cursor, 0);
 
     for _ in 0..10 {
         app.update();
     }
 
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.cursor, 0);
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.cursor, 0);
 }
 
 #[test]
 fn playback_strategy_frame() {
     let mut app = playback_app(PlaybackStrategy::FrameCount);
-    *app.world.resource_mut::<UnifiedInput>() = complex_unified_input();
+    *app.world.resource_mut::<TimestampedInputs>() = complex_timestamped_input();
 
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.cursor, 0);
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.cursor, 0);
 
-    // Check complex_unified_input to verify the pattern
+    // Check complex_timestamped_input to verify the pattern
     app.update();
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.cursor, 2);
-
-    app.update();
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.cursor, 4);
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.cursor, 2);
 
     app.update();
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.cursor, 5);
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.cursor, 4);
+
+    app.update();
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.cursor, 5);
 }
 
 #[test]
 fn playback_strategy_frame_range_once() {
     let strategy = PlaybackStrategy::FrameRangeOnce(FrameCount(2), FrameCount(5));
     let mut app = playback_app(strategy);
-    *app.world.resource_mut::<UnifiedInput>() = complex_unified_input();
+    *app.world.resource_mut::<TimestampedInputs>() = complex_timestamped_input();
 
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.cursor, 0);
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.cursor, 0);
 
     // Replays the events in the frame range [2, 5)
     // This playback strategy plays back the inputs one frame at a time until the entire range is captured
@@ -220,10 +220,10 @@ fn playback_strategy_frame_range_once() {
 fn playback_strategy_frame_range_loop() {
     let strategy = PlaybackStrategy::FrameRangeLoop(FrameCount(2), FrameCount(5));
     let mut app = playback_app(strategy);
-    *app.world.resource_mut::<UnifiedInput>() = complex_unified_input();
+    *app.world.resource_mut::<TimestampedInputs>() = complex_timestamped_input();
 
-    let unified_input = app.world.resource::<UnifiedInput>();
-    assert_eq!(unified_input.cursor, 0);
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.cursor, 0);
 
     // Replays the events in the frame range [2, 5)
     // This playback strategy plays back the inputs one frame at a time until the entire range is captured

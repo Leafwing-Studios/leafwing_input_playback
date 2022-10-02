@@ -1,6 +1,6 @@
-//! Reads user input from a single [`UnifiedInput`] event stream
+//! Reads user input from a single [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource.
 //!
-//! These are played back by emulating assorted Bevy input events
+//! These are played back by emulating assorted Bevy input events.
 
 use bevy_app::{App, CoreStage, Plugin};
 use bevy_ecs::{prelude::*, system::SystemParam};
@@ -13,9 +13,9 @@ use bevy_utils::Duration;
 use bevy_window::CursorMoved;
 
 use crate::frame_counting::{frame_counter, FrameCount};
-use crate::unified_input::{TimestampedInputEvent, UnifiedInput};
+use crate::timestamped_input::{TimestampedInputEvent, TimestampedInputs};
 
-/// Reads from the [`UnifiedInput`] event stream to determine which events to play back.
+/// Reads from the [`TimestampedInputs`] event stream to determine which events to play back.
 ///
 /// Events are played back during [`CoreStage::First`] to accurately mimic the behavior of native `winit`-based inputs.
 /// Which events are played back are controlled via the [`PlaybackStrategy`] resource.
@@ -29,12 +29,12 @@ impl Plugin for InputPlaybackPlugin {
                 .add_system_to_stage(CoreStage::First, frame_counter);
         }
 
-        app.init_resource::<UnifiedInput>()
+        app.init_resource::<TimestampedInputs>()
             .init_resource::<PlaybackProgress>()
             .init_resource::<PlaybackStrategy>()
             .add_system_to_stage(
                 CoreStage::First,
-                playback_unified_input.after(frame_counter),
+                playback_timestamped_input.after(frame_counter),
             );
     }
 }
@@ -81,7 +81,7 @@ pub enum PlaybackStrategy {
     Paused,
 }
 
-/// The [`EventWriter`] types that correspond to the input event types stored in [`InputEvent`](crate::unified_input::InputEvent)
+/// The [`EventWriter`] types that correspond to the input event types stored in [`InputEvent`](crate::timestamped_input::InputEvent)
 #[derive(SystemParam)]
 #[allow(missing_docs)]
 pub struct InputWriters<'w, 's> {
@@ -91,12 +91,12 @@ pub struct InputWriters<'w, 's> {
     pub cursor_moved: EventWriter<'w, 's, CursorMoved>,
 }
 
-// UnifiedInput is an iterator, so we need mutable access to be able to track which events we've seen
-/// A system that reads from the [`UnifiedInput`] resources and plays back the contained events.
+// `TimestampedInputs` is an iterator, so we need mutable access to be able to track which events we've seen
+/// A system that reads from the [`TimestampedInputs`] resources and plays back the contained events.
 ///
 /// The strategy used is based on [`PlaybackStrategy`].
-pub fn playback_unified_input(
-    mut unified_input: ResMut<UnifiedInput>,
+pub fn playback_timestamped_input(
+    mut timestamped_input: ResMut<TimestampedInputs>,
     mut playback_strategy: ResMut<PlaybackStrategy>,
     time: Res<Time>,
     frame_count: Res<FrameCount>,
@@ -106,15 +106,15 @@ pub fn playback_unified_input(
     // We cannot store the iterator, as different opaque return types are used
     match *playback_strategy {
         PlaybackStrategy::Time => {
-            let input_events = unified_input.iter_until_time(time.time_since_startup());
+            let input_events = timestamped_input.iter_until_time(time.time_since_startup());
             send_playback_events(input_events, &mut input_writers);
         }
         PlaybackStrategy::FrameCount => {
-            let input_events = unified_input.iter_until_frame(*frame_count);
+            let input_events = timestamped_input.iter_until_frame(*frame_count);
             send_playback_events(input_events, &mut input_writers);
         }
         PlaybackStrategy::TimeRangeOnce(start, end) => {
-            let input_events = unified_input.iter_between_times(
+            let input_events = timestamped_input.iter_between_times(
                 playback_progress.current_time(start),
                 playback_progress.next_time(time.delta(), start),
             );
@@ -122,13 +122,13 @@ pub fn playback_unified_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_time(start) > end {
-                playback_progress.reset(&mut *unified_input);
+                playback_progress.reset(&mut *timestamped_input);
                 // We only want to play back once, so pause.
                 *playback_strategy = PlaybackStrategy::Paused;
             }
         }
         PlaybackStrategy::FrameRangeOnce(start, end) => {
-            let input_events = unified_input.iter_between_frames(
+            let input_events = timestamped_input.iter_between_frames(
                 playback_progress.current_frame(start),
                 playback_progress.next_frame(start),
             );
@@ -136,13 +136,13 @@ pub fn playback_unified_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_frame(start) > end {
-                playback_progress.reset(&mut *unified_input);
+                playback_progress.reset(&mut *timestamped_input);
                 // We only want to play back once, so pause.
                 *playback_strategy = PlaybackStrategy::Paused;
             }
         }
         PlaybackStrategy::TimeRangeLoop(start, end) => {
-            let input_events = unified_input.iter_between_times(
+            let input_events = timestamped_input.iter_between_times(
                 playback_progress.current_time(start),
                 playback_progress.next_time(time.delta(), start),
             );
@@ -150,11 +150,11 @@ pub fn playback_unified_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_time(start) > end {
-                playback_progress.reset(&mut *unified_input);
+                playback_progress.reset(&mut *timestamped_input);
             }
         }
         PlaybackStrategy::FrameRangeLoop(start, end) => {
-            let input_events = unified_input.iter_between_frames(
+            let input_events = timestamped_input.iter_between_frames(
                 playback_progress.current_frame(start),
                 playback_progress.next_frame(start),
             );
@@ -162,7 +162,7 @@ pub fn playback_unified_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_frame(start) > end {
-                playback_progress.reset(&mut *unified_input);
+                playback_progress.reset(&mut *timestamped_input);
             }
         }
         PlaybackStrategy::Paused => {
@@ -177,7 +177,7 @@ fn send_playback_events(
 ) {
     // We must be caeful not to consume these values
     for timestamped_input_event in timestamped_input_events {
-        use crate::unified_input::InputEvent::*;
+        use crate::timestamped_input::InputEvent::*;
         match timestamped_input_event.input_event {
             Keyboard(e) => input_writers.keyboard_input.send(e),
             MouseButton(e) => input_writers.mouse_button_input.send(e),
@@ -192,7 +192,7 @@ fn send_playback_events(
 /// The `initial_time` and `initial_frame` are stored to be able to compute
 /// the offset between the actual time (frame count) and the time (frame count) of the recording.
 ///
-/// Used in the [`playback_unified_input`] system to track progress.
+/// Used in the [`playback_timestamped_input`] system to track progress.
 #[derive(Default, Debug, PartialEq, Clone)]
 pub struct PlaybackProgress {
     /// The [`Duration`] that this playback loop has been running for
@@ -241,8 +241,8 @@ impl PlaybackProgress {
     /// Resets all tracked progress.
     ///
     /// This is called when the current pass of the playback loop elapses.
-    pub fn reset(&mut self, unified_input: &mut UnifiedInput) {
-        unified_input.reset_cursor();
+    pub fn reset(&mut self, timestamped_input: &mut TimestampedInputs) {
+        timestamped_input.reset_cursor();
         *self = Self::default();
     }
 }

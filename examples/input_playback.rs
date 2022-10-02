@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use leafwing_input_playback::{
     input_capture::{InputCapturePlugin, InputModesCaptured},
     input_playback::{InputPlaybackPlugin, PlaybackStrategy},
-    unified_input::UnifiedInput,
+    timestamped_input::TimestampedInputs,
 };
 
 fn main() {
@@ -101,7 +101,7 @@ fn toggle_capture_vs_playback(
     mut input_modes: ResMut<InputModesCaptured>,
     mut playback_strategy: ResMut<PlaybackStrategy>,
     keyboard_input: Res<Input<KeyCode>>,
-    mut unified_input: ResMut<UnifiedInput>,
+    mut timestamped_input: ResMut<TimestampedInputs>,
     mut input_strategy: ResMut<InputStrategy>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
@@ -112,7 +112,7 @@ fn toggle_capture_vs_playback(
                 // Enable input playback
                 *playback_strategy = if let Some((start, end)) =
                     // Play back all recorded inputs at the same rate they were input
-                    unified_input.frame_range()
+                    timestamped_input.frame_range()
                 {
                     PlaybackStrategy::FrameRangeOnce(start, end)
                 } else {
@@ -130,7 +130,7 @@ fn toggle_capture_vs_playback(
                 *playback_strategy = PlaybackStrategy::Paused;
 
                 // Reset all input data, starting a new recording
-                *unified_input = UnifiedInput::default();
+                *timestamped_input = TimestampedInputs::default();
 
                 info!("Now capturing input.");
                 InputStrategy::Capture

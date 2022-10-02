@@ -1,5 +1,7 @@
 use bevy::prelude::*;
-use leafwing_input_playback::{input_capture::InputCapturePlugin, unified_input::UnifiedInput};
+use leafwing_input_playback::{
+    input_capture::InputCapturePlugin, timestamped_input::TimestampedInputs,
+};
 
 fn main() {
     App::new()
@@ -9,8 +11,8 @@ fn main() {
         .run()
 }
 
-// UnifiedInput is an iterator, so we require mutable access to track which events we've seen
-fn debug_input_capture(mut captured_input: ResMut<UnifiedInput>) {
+// TimestampedInput is an iterator, so we require mutable access to track which events we've seen
+fn debug_input_capture(mut captured_input: ResMut<TimestampedInputs>) {
     // Dereferences out of the `ResMut` smart pointer, allowing us to access the `Iterator` trait
     for input_event in captured_input.iter_rest() {
         dbg!(input_event);

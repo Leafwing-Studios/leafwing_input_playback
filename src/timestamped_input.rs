@@ -1,6 +1,6 @@
 //! Unifies (and time-stamp) various `bevy_input` and `bevy_window` input events.
 //! These are first unified into a [`InputEvent`] enum, then timestamped to create a [`TimestampedInputEvent`].
-//! Those timestamped events are finally stored inside of a [`UnifiedInput`] resource, which should be used for input capture and playback.
+//! Those timestamped events are finally stored inside of a [`TimestampedInputs`] resource, which should be used for input capture and playback.
 
 use bevy_input::keyboard::KeyboardInput;
 use bevy_input::mouse::{MouseButtonInput, MouseWheel};
@@ -23,13 +23,13 @@ pub struct TimestampedInputEvent {
     pub input_event: InputEvent,
 }
 
-/// A resource that stores the complete event-like list of [`UnifiedInputEvent]s
+/// A resource that stores the complete event-like list of [`TimestampedInputs`]
 ///
 /// Read and write to this struct when performing input capture and playback
 // BLOCKED: should be PartialEq, but https://github.com/bevyengine/bevy/issues/6024
 #[derive(Debug, Clone, Default)]
-pub struct UnifiedInput {
-    /// The underlying [`UnifiedInputEvent`] data
+pub struct TimestampedInputs {
+    /// The underlying [`TimestampedInputEvent`] data
     ///
     /// New events are pushed to the back of the list.
     /// If input events are recorded immediately, the final list will be sorted,
@@ -45,7 +45,7 @@ pub struct UnifiedInput {
     pub cursor: usize,
 }
 
-impl UnifiedInput {
+impl TimestampedInputs {
     /// Records an `input_event`, making note of the frame and time that it was sent.
     pub fn send(
         &mut self,
@@ -150,7 +150,7 @@ impl UnifiedInput {
 
     /// Returns an iterator over all recorded events up to and including the provided `frame` is reached, beginning at the current `cursor`.
     ///
-    /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
+    /// This method should only be used on [`TimestampedInputs`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
     #[must_use]
     pub fn iter_until_time(
         &mut self,
@@ -169,7 +169,7 @@ impl UnifiedInput {
 
     /// Returns an iterator over all recorded events up to and including the provided `time_since_startup`, beginning at the current `cursor`
     ///
-    /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::FrameCount`].
+    /// This method should only be used on [`TimestampedInputs`] resources that are sorted by [`SortingStrategy::FrameCount`].
     #[must_use]
     pub fn iter_until_frame(
         &mut self,
@@ -187,7 +187,7 @@ impl UnifiedInput {
     /// Returns an iterator over recorded events starting from (inclusive) the start time,
     /// and until (exclusive) the end time.
     ///
-    /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
+    /// This method should only be used on [`TimestampedInputs`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
     #[must_use]
     pub fn iter_between_times(
         &mut self,
@@ -211,7 +211,7 @@ impl UnifiedInput {
     /// Returns an iterator over recorded events starting from (inclusive) the start frame,
     /// and until (exclusive) the end frame.
     ///
-    /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
+    /// This method should only be used on [`TimestampedInputs`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
     #[must_use]
     pub fn iter_between_frames(
         &mut self,
@@ -249,7 +249,7 @@ impl UnifiedInput {
         self.events.sort_by(strategy);
     }
 
-    /// Is this [`UnifiedInput`] sorted according to the specified [`SortingStrategy`]?
+    /// Is this [`TimestampedInputs`] sorted according to the specified [`SortingStrategy`]?
     pub fn is_sorted(&self, strategy: SortingStrategy) -> bool {
         match strategy {
             SortingStrategy::FrameCount => {
@@ -334,7 +334,7 @@ impl UnifiedInput {
     }
 }
 
-/// The sorting strategy used for the [`UnifiedInput::sort`] method.
+/// The sorting strategy used for the [`TimestampedInputs::sort`] method.
 ///
 /// In all typical cases, these two sorting strategies should agree.
 pub enum SortingStrategy {
@@ -344,7 +344,7 @@ pub enum SortingStrategy {
     TimeSinceStartup,
 }
 
-/// Collects input-relevant events for use in [`UnifiedInput`]
+/// Collects input-relevant events for use in [`TimestampedInputs`]
 // BLOCKED: this should be PartialEq, but we're blocked on https://github.com/bevyengine/bevy/issues/6024
 #[allow(missing_docs)]
 #[derive(Debug, Clone)]
@@ -395,8 +395,8 @@ mod tests {
         state: ButtonState::Released,
     });
 
-    fn complex_unified_input() -> UnifiedInput {
-        let mut inputs = UnifiedInput::default();
+    fn complex_timestamped_input() -> TimestampedInputs {
+        let mut inputs = TimestampedInputs::default();
         inputs.send(
             FrameCount(0),
             Duration::from_secs(0),
@@ -428,158 +428,160 @@ mod tests {
 
     #[test]
     fn send_event() {
-        let mut unified_input = UnifiedInput::default();
-        unified_input.send(FrameCount(0), Duration::ZERO, LEFT_CLICK_PRESS);
-        assert_eq!(unified_input.len(), 1);
-        assert_eq!(unified_input.last_framecount(), None);
-        assert_eq!(unified_input.current_framecount(), Some(FrameCount(0)));
-        assert_eq!(unified_input.last_time(), None);
-        assert_eq!(unified_input.current_time(), Some(Duration::ZERO));
+        let mut timestamped_input = TimestampedInputs::default();
+        timestamped_input.send(FrameCount(0), Duration::ZERO, LEFT_CLICK_PRESS);
+        assert_eq!(timestamped_input.len(), 1);
+        assert_eq!(timestamped_input.last_framecount(), None);
+        assert_eq!(timestamped_input.current_framecount(), Some(FrameCount(0)));
+        assert_eq!(timestamped_input.last_time(), None);
+        assert_eq!(timestamped_input.current_time(), Some(Duration::ZERO));
     }
 
     #[test]
     fn send_multiple_events() {
-        let mut unified_input = UnifiedInput::default();
+        let mut timestamped_input = TimestampedInputs::default();
         let events = [LEFT_CLICK_PRESS, LEFT_CLICK_RELEASE];
 
         // This sends all events received simultaneously
-        unified_input.send_multiple(FrameCount(0), Duration::ZERO, events.into_iter());
+        timestamped_input.send_multiple(FrameCount(0), Duration::ZERO, events.into_iter());
 
-        assert_eq!(unified_input.len(), 2);
-        assert_eq!(unified_input.last_framecount(), None);
-        assert_eq!(unified_input.current_framecount(), Some(FrameCount(0)));
-        assert_eq!(unified_input.last_time(), None);
-        assert_eq!(unified_input.current_time(), Some(Duration::ZERO));
+        assert_eq!(timestamped_input.len(), 2);
+        assert_eq!(timestamped_input.last_framecount(), None);
+        assert_eq!(timestamped_input.current_framecount(), Some(FrameCount(0)));
+        assert_eq!(timestamped_input.last_time(), None);
+        assert_eq!(timestamped_input.current_time(), Some(Duration::ZERO));
 
         // Advance by one event
-        unified_input.next();
+        timestamped_input.next();
 
-        assert_eq!(unified_input.last_framecount(), Some(FrameCount(0)));
-        assert_eq!(unified_input.current_framecount(), Some(FrameCount(0)));
-        assert_eq!(unified_input.last_time(), Some(Duration::ZERO));
-        assert_eq!(unified_input.current_time(), Some(Duration::ZERO));
+        assert_eq!(timestamped_input.last_framecount(), Some(FrameCount(0)));
+        assert_eq!(timestamped_input.current_framecount(), Some(FrameCount(0)));
+        assert_eq!(timestamped_input.last_time(), Some(Duration::ZERO));
+        assert_eq!(timestamped_input.current_time(), Some(Duration::ZERO));
 
         // BLOCKED: we want PartialEq on `InputEvent`, but https://github.com/bevyengine/bevy/issues/6024
 
-        // assert_eq!(unified_input.last_input(), Some(LEFT_CLICK_PRESS));
-        // assert_eq!(unified_input.current_input(), Some(LEFT_CLICK_RELEASE));
+        // assert_eq!(timestamped_input.last_input(), Some(LEFT_CLICK_PRESS));
+        // assert_eq!(timestamped_input.current_input(), Some(LEFT_CLICK_RELEASE));
     }
 
     /// Tests to verify that none of the iteration methods consume events
     #[test]
     fn repeated_iteration() {
-        let mut unified_input = complex_unified_input();
-        let iter = unified_input.iter_all();
+        let mut timestamped_input = complex_timestamped_input();
+        let iter = timestamped_input.iter_all();
         assert_eq!(iter.into_iter().count(), 5);
 
-        unified_input.reset_cursor();
-        let iter = unified_input.iter_rest();
+        timestamped_input.reset_cursor();
+        let iter = timestamped_input.iter_rest();
         assert_eq!(iter.into_iter().count(), 5);
 
-        unified_input.reset_cursor();
-        let iter = unified_input.iter_until_frame(FrameCount(10));
+        timestamped_input.reset_cursor();
+        let iter = timestamped_input.iter_until_frame(FrameCount(10));
         assert_eq!(iter.into_iter().count(), 5);
 
-        unified_input.reset_cursor();
-        let iter = unified_input.iter_until_time(Duration::from_secs(10));
+        timestamped_input.reset_cursor();
+        let iter = timestamped_input.iter_until_time(Duration::from_secs(10));
         assert_eq!(iter.into_iter().count(), 5);
 
-        unified_input.reset_cursor();
-        let iter = unified_input.iter_between_frames(FrameCount(1), FrameCount(3));
+        timestamped_input.reset_cursor();
+        let iter = timestamped_input.iter_between_frames(FrameCount(1), FrameCount(3));
         assert_eq!(iter.into_iter().count(), 3);
 
-        unified_input.reset_cursor();
-        let iter = unified_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(3));
+        timestamped_input.reset_cursor();
+        let iter =
+            timestamped_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(3));
         assert_eq!(iter.into_iter().count(), 3);
 
-        unified_input.reset_cursor();
-        let iter = unified_input.iter_all();
+        timestamped_input.reset_cursor();
+        let iter = timestamped_input.iter_all();
         assert_eq!(iter.into_iter().count(), 5);
     }
 
     #[test]
     fn zero_len_iter_all() {
-        let mut unified_input = UnifiedInput::default();
-        let iter = unified_input.iter_all();
+        let mut timestamped_input = TimestampedInputs::default();
+        let iter = timestamped_input.iter_all();
         assert_eq!(iter.into_iter().count(), 0);
     }
 
     #[test]
     fn max_len_iter_all() {
-        let mut unified_input = complex_unified_input();
-        let iter = unified_input.iter_all();
+        let mut timestamped_input = complex_timestamped_input();
+        let iter = timestamped_input.iter_all();
         assert_eq!(iter.into_iter().count(), 5);
     }
 
     #[test]
     fn zero_len_iter_until_frame() {
-        let mut unified_input = UnifiedInput::default();
-        let iter = unified_input.iter_until_frame(FrameCount(10));
+        let mut timestamped_input = TimestampedInputs::default();
+        let iter = timestamped_input.iter_until_frame(FrameCount(10));
         assert_eq!(iter.into_iter().count(), 0);
     }
 
     #[test]
     fn max_len_iter_until_frame() {
-        let mut unified_input = complex_unified_input();
-        let iter = unified_input.iter_until_frame(FrameCount(10));
+        let mut timestamped_input = complex_timestamped_input();
+        let iter = timestamped_input.iter_until_frame(FrameCount(10));
         assert_eq!(iter.into_iter().count(), 5);
     }
 
     #[test]
     fn zero_len_iter_until_time() {
-        let mut unified_input = UnifiedInput::default();
-        let iter = unified_input.iter_until_time(Duration::from_secs(10));
+        let mut timestamped_input = TimestampedInputs::default();
+        let iter = timestamped_input.iter_until_time(Duration::from_secs(10));
         assert_eq!(iter.into_iter().count(), 0);
     }
 
     #[test]
     fn max_len_iter_until_time() {
-        let mut unified_input = complex_unified_input();
-        let iter = unified_input.iter_until_time(Duration::from_secs(10));
+        let mut timestamped_input = complex_timestamped_input();
+        let iter = timestamped_input.iter_until_time(Duration::from_secs(10));
         assert_eq!(iter.into_iter().count(), 5);
     }
 
     #[test]
     fn zero_len_iter_between_frames() {
-        let mut unified_input = UnifiedInput::default();
-        let iter = unified_input.iter_between_frames(FrameCount(0), FrameCount(10));
+        let mut timestamped_input = TimestampedInputs::default();
+        let iter = timestamped_input.iter_between_frames(FrameCount(0), FrameCount(10));
         assert_eq!(iter.into_iter().count(), 0);
     }
 
     #[test]
     fn zero_len_iter_between_times() {
-        let mut unified_input = UnifiedInput::default();
+        let mut timestamped_input = TimestampedInputs::default();
         let iter =
-            unified_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(10));
+            timestamped_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(10));
         assert_eq!(iter.into_iter().count(), 0);
     }
 
     #[test]
     fn max_len_iter_between_frames() {
-        let mut unified_input = complex_unified_input();
-        let iter = unified_input.iter_between_frames(FrameCount(0), FrameCount(10));
+        let mut timestamped_input = complex_timestamped_input();
+        let iter = timestamped_input.iter_between_frames(FrameCount(0), FrameCount(10));
         assert_eq!(iter.into_iter().count(), 5);
     }
 
     #[test]
     fn max_len_iter_between_times() {
-        let mut unified_input = complex_unified_input();
+        let mut timestamped_input = complex_timestamped_input();
         let iter =
-            unified_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(10));
+            timestamped_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(10));
         assert_eq!(iter.into_iter().count(), 5);
     }
 
     #[test]
     fn iter_between_frames() {
-        let mut unified_input = complex_unified_input();
-        let iter = unified_input.iter_between_frames(FrameCount(1), FrameCount(3));
+        let mut timestamped_input = complex_timestamped_input();
+        let iter = timestamped_input.iter_between_frames(FrameCount(1), FrameCount(3));
         assert_eq!(iter.into_iter().count(), 3);
     }
 
     #[test]
     fn iter_between_times() {
-        let mut unified_input = complex_unified_input();
-        let iter = unified_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(3));
+        let mut timestamped_input = complex_timestamped_input();
+        let iter =
+            timestamped_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(3));
         assert_eq!(iter.into_iter().count(), 3);
     }
 }
