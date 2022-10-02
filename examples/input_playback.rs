@@ -19,11 +19,16 @@ fn main() {
         .add_startup_system(setup)
         .add_system(spawn_boxes)
         .add_system(decay_boxes)
-        // Toggle input_capture using Space
-        .add_system(toggle_input_capture)
-        // Toggle playback using Enter
-        .add_system(toggle_input_playback)
+        // Toggle between playback and capture by pressing Space
+        .insert_resource(InputStrategy::Playback)
+        .add_system(toggle_capture_vs_playback)
         .run()
+}
+
+#[derive(PartialEq)]
+enum InputStrategy {
+    Capture,
+    Playback,
 }
 
 fn setup(mut commands: Commands) {
@@ -92,54 +97,44 @@ fn decay_boxes(mut query: Query<(Entity, &mut Transform), With<Box>>, mut comman
     }
 }
 
-fn toggle_input_capture(
+fn toggle_capture_vs_playback(
     mut input_modes: ResMut<InputModesCaptured>,
+    mut playback_strategy: ResMut<PlaybackStrategy>,
     keyboard_input: Res<Input<KeyCode>>,
     mut unified_input: ResMut<UnifiedInput>,
+    mut input_strategy: ResMut<InputStrategy>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
-        if !input_modes.mouse_motion {
-            *input_modes = InputModesCaptured {
-                mouse_buttons: true,
-                mouse_motion: true,
-                ..default()
-            };
-
-            // Reset all input data, starting a new recording
-            *unified_input = UnifiedInput::default();
-
-            info!("Input is now being captured.");
-        } else {
-            *input_modes = InputModesCaptured::DISABLE_ALL;
-            info!("Input is no longer being captured.");
-        }
-    }
-}
-
-fn toggle_input_playback(
-    keyboard_input: Res<Input<KeyCode>>,
-    mut playback_strategy: ResMut<PlaybackStrategy>,
-    unified_input: Res<UnifiedInput>,
-) {
-    if keyboard_input.just_pressed(KeyCode::Return) {
-        *playback_strategy = match *playback_strategy {
-            PlaybackStrategy::FrameRangeOnce(_, _) => {
-                info!("Input playback is now paused.");
-                PlaybackStrategy::Paused
-            }
-            PlaybackStrategy::Paused => {
-                info!("Input is playing back.");
-                if let Some(start) = unified_input.start_frame() {
-                    if let Some(end) = unified_input.end_frame() {
-                        PlaybackStrategy::FrameRangeOnce(start, end)
-                    } else {
-                        PlaybackStrategy::Paused
-                    }
+        *input_strategy = match *input_strategy {
+            InputStrategy::Capture => {
+                // Disable input capture
+                *input_modes = InputModesCaptured::DISABLE_ALL;
+                // Enable input playback
+                *playback_strategy = if let Some((start, end)) =
+                    // Play back all recorded inputs at the same rate they were input
+                    unified_input.frame_range()
+                {
+                    PlaybackStrategy::FrameRangeOnce(start, end)
                 } else {
+                    // Do not play back events if none were recorded
                     PlaybackStrategy::Paused
-                }
+                };
+
+                info!("Now playing back input.");
+                InputStrategy::Playback
             }
-            _ => unreachable!(),
-        }
+            InputStrategy::Playback => {
+                // Enable input capture
+                *input_modes = InputModesCaptured::ENABLE_ALL;
+                // Disable input playback
+                *playback_strategy = PlaybackStrategy::Paused;
+
+                // Reset all input data, starting a new recording
+                *unified_input = UnifiedInput::default();
+
+                info!("Now capturing input.");
+                InputStrategy::Capture
+            }
+        };
     }
 }
