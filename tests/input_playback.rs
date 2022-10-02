@@ -25,13 +25,15 @@ const TEST_RELEASE: KeyboardInput = KeyboardInput {
     state: ButtonState::Released,
 };
 
-fn playback_app() -> App {
+fn playback_app(strategy: PlaybackStrategy) -> App {
     let mut app = App::new();
 
     app.add_plugins(MinimalPlugins)
         .add_plugin(WindowPlugin)
         .add_plugin(InputPlugin)
         .add_plugin(InputPlaybackPlugin);
+
+    *app.world.resource_mut::<PlaybackStrategy>() = strategy;
 
     app
 }
@@ -57,7 +59,7 @@ fn complex_unified_input() -> UnifiedInput {
 
 #[test]
 fn minimal_playback() {
-    let mut app = playback_app();
+    let mut app = playback_app(PlaybackStrategy::default());
     *app.world.resource_mut::<UnifiedInput>() = simple_unified_input();
     app.update();
 
@@ -77,7 +79,7 @@ fn minimal_playback() {
 
 #[test]
 fn capture_and_playback() {
-    let mut app = playback_app();
+    let mut app = playback_app(PlaybackStrategy::default());
     app.add_plugin(InputCapturePlugin);
     app.insert_resource(PlaybackStrategy::Paused);
 
@@ -100,7 +102,7 @@ fn capture_and_playback() {
 
 #[test]
 fn playback_strategy_paused() {
-    let mut app = playback_app();
+    let mut app = playback_app(PlaybackStrategy::Paused);
     *app.world.resource_mut::<UnifiedInput>() = complex_unified_input();
 
     let unified_input = app.world.resource::<UnifiedInput>();
