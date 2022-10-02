@@ -161,9 +161,13 @@ impl UnifiedInput {
         debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
         let mut cursor = 0;
-        while self.cursor < self.events.len() && self.events[cursor].time_since_startup < end_time {
-            if self.events[cursor].time_since_startup >= start_time {
+        while self.cursor < self.events.len() {
+            if self.events[cursor].time_since_startup >= start_time
+                && self.events[cursor].time_since_startup < end_time
+            {
                 result.push(self.events[cursor].clone());
+            } else if self.events[cursor].time_since_startup >= end_time {
+                break;
             }
             cursor += 1;
         }
@@ -185,9 +189,11 @@ impl UnifiedInput {
         debug_assert!(self.is_sorted(SortingStrategy::FrameCount));
         let mut result = Vec::with_capacity(self.events.len());
         let mut cursor = 0;
-        while self.cursor < self.events.len() && self.events[cursor].frame < end_frame {
-            if self.events[cursor].frame >= start_frame {
+        while self.cursor < self.events.len() {
+            if self.events[cursor].frame >= start_frame && self.events[cursor].frame < end_frame {
                 result.push(self.events[cursor].clone());
+            } else if self.events[cursor].frame >= end_frame {
+                break;
             }
             cursor += 1;
         }
@@ -357,6 +363,37 @@ mod tests {
         state: ButtonState::Released,
     });
 
+    fn complex_unified_input() -> UnifiedInput {
+        let mut inputs = UnifiedInput::default();
+        inputs.send(
+            FrameCount(0),
+            Duration::from_secs(0),
+            LEFT_CLICK_PRESS.into(),
+        );
+        inputs.send(
+            FrameCount(1),
+            Duration::from_secs(1),
+            LEFT_CLICK_RELEASE.into(),
+        );
+        inputs.send(
+            FrameCount(2),
+            Duration::from_secs(2),
+            LEFT_CLICK_PRESS.into(),
+        );
+        inputs.send(
+            FrameCount(2),
+            Duration::from_secs(3),
+            LEFT_CLICK_PRESS.into(),
+        );
+        inputs.send(
+            FrameCount(3),
+            Duration::from_secs(3),
+            LEFT_CLICK_PRESS.into(),
+        );
+
+        inputs
+    }
+
     #[test]
     fn send_event() {
         let mut unified_input = UnifiedInput::default();
@@ -394,5 +431,91 @@ mod tests {
 
         // assert_eq!(unified_input.last_input(), Some(LEFT_CLICK_PRESS));
         // assert_eq!(unified_input.current_input(), Some(LEFT_CLICK_RELEASE));
+    }
+
+    #[test]
+    fn zero_len_iter_all() {
+        let mut unified_input = UnifiedInput::default();
+        let iter = unified_input.iter_all();
+        assert_eq!(iter.into_iter().count(), 0);
+    }
+
+    #[test]
+    fn max_len_iter_all() {
+        let mut unified_input = complex_unified_input();
+        let iter = unified_input.iter_all();
+        assert_eq!(iter.into_iter().count(), 5);
+    }
+
+    #[test]
+    fn zero_len_iter_until_frame() {
+        let mut unified_input = UnifiedInput::default();
+        let iter = unified_input.iter_until_frame(FrameCount(10));
+        assert_eq!(iter.into_iter().count(), 0);
+    }
+
+    #[test]
+    fn max_len_iter_until_frame() {
+        let mut unified_input = complex_unified_input();
+        let iter = unified_input.iter_until_frame(FrameCount(10));
+        assert_eq!(iter.into_iter().count(), 5);
+    }
+
+    #[test]
+    fn zero_len_iter_until_time() {
+        let mut unified_input = UnifiedInput::default();
+        let iter = unified_input.iter_until_time(Duration::from_secs(10));
+        assert_eq!(iter.into_iter().count(), 0);
+    }
+
+    #[test]
+    fn max_len_iter_until_time() {
+        let mut unified_input = complex_unified_input();
+        let iter = unified_input.iter_until_time(Duration::from_secs(10));
+        assert_eq!(iter.into_iter().count(), 5);
+    }
+
+    #[test]
+    fn zero_len_iter_between_frames() {
+        let mut unified_input = UnifiedInput::default();
+        let iter = unified_input.iter_between_frames(FrameCount(0), FrameCount(10));
+        assert_eq!(iter.into_iter().count(), 0);
+    }
+
+    #[test]
+    fn zero_len_iter_between_times() {
+        let mut unified_input = UnifiedInput::default();
+        let iter =
+            unified_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(10));
+        assert_eq!(iter.into_iter().count(), 0);
+    }
+
+    #[test]
+    fn max_len_iter_between_frames() {
+        let mut unified_input = complex_unified_input();
+        let iter = unified_input.iter_between_frames(FrameCount(0), FrameCount(10));
+        assert_eq!(iter.into_iter().count(), 5);
+    }
+
+    #[test]
+    fn max_len_iter_between_times() {
+        let mut unified_input = complex_unified_input();
+        let iter =
+            unified_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(10));
+        assert_eq!(iter.into_iter().count(), 5);
+    }
+
+    #[test]
+    fn iter_between_frames() {
+        let mut unified_input = complex_unified_input();
+        let iter = unified_input.iter_between_frames(FrameCount(1), FrameCount(3));
+        assert_eq!(iter.into_iter().count(), 3);
+    }
+
+    #[test]
+    fn iter_between_times() {
+        let mut unified_input = complex_unified_input();
+        let iter = unified_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(3));
+        assert_eq!(iter.into_iter().count(), 3);
     }
 }
