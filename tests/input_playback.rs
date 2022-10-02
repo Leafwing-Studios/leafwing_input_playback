@@ -1,6 +1,5 @@
 // BLOCKED: add time strategy tests: https://github.com/bevyengine/bevy/issues/6146
 
-use bevy::ecs::system::SystemState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
 use bevy::input::InputPlugin;
@@ -153,7 +152,7 @@ fn playback_strategy_frame() {
 }
 
 #[test]
-fn playback_strategy_frame_slice_once() {
+fn playback_strategy_frame_range_once() {
     let strategy = PlaybackStrategy::FrameRangeOnce(FrameCount(2), FrameCount(5));
     let mut app = playback_app(strategy);
     *app.world.resource_mut::<UnifiedInput>() = complex_unified_input();
@@ -165,31 +164,23 @@ fn playback_strategy_frame_slice_once() {
     // This playback strategy plays back the inputs one frame at a time until the entire range is captured
     // Then swaps to PlaybackStrategy::Paused
     app.update();
-    let mut system_state: SystemState<EventReader<KeyboardInput>> =
-        SystemState::new(&mut app.world);
-    let input_events = system_state.get(&app.world);
+    let input_events = app.world.resource::<Events<KeyboardInput>>();
     // Frame 2
-    assert_eq!(input_events.len(), 1);
-
-    app.update();
-    let mut system_state: SystemState<EventReader<KeyboardInput>> =
-        SystemState::new(&mut app.world);
-    let input_events = system_state.get(&app.world);
-    // Frame 3
     assert_eq!(input_events.len(), 2);
 
     app.update();
-    let mut system_state: SystemState<EventReader<KeyboardInput>> =
-        SystemState::new(&mut app.world);
-    let input_events = system_state.get(&app.world);
-    // Frame 4
-    assert_eq!(*app.world.resource::<PlaybackStrategy>(), strategy);
-    assert_eq!(input_events.len(), 0);
+    let input_events = app.world.resource::<Events<KeyboardInput>>();
+    // Frame 3 (events are double buffered)
+    assert_eq!(input_events.len(), 3);
 
     app.update();
-    let mut system_state: SystemState<EventReader<KeyboardInput>> =
-        SystemState::new(&mut app.world);
-    let input_events = system_state.get(&app.world);
+    let input_events = app.world.resource::<Events<KeyboardInput>>();
+    // Frame 4 (events are double buffered)
+    assert_eq!(*app.world.resource::<PlaybackStrategy>(), strategy);
+    assert_eq!(input_events.len(), 1);
+
+    app.update();
+    let input_events = app.world.resource::<Events<KeyboardInput>>();
     // Paused
     assert_eq!(input_events.len(), 0);
     assert_eq!(
