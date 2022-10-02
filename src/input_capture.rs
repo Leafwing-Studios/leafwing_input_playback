@@ -1,105 +1,87 @@
-//! Captures user input from assorted raw `Event` types.
+//! Captures user input from assorted raw [`Event`](bevy_ecs::event::Event) types.
 //!
-//! These are unified into a single [`UnifiedInput`] event stream, which can be played back
+//! These are unified into a single [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource, which can be played back.
+
 use bevy_app::{App, CoreStage, Plugin};
 use bevy_ecs::prelude::*;
 use bevy_input::keyboard::KeyboardInput;
 use bevy_input::mouse::{MouseButtonInput, MouseWheel};
 use bevy_time::Time;
-use bevy_utils::Duration;
 use bevy_window::CursorMoved;
 
-/// A timestamped device-agnostic user-input event
-///
-/// These are re-emitted as events, and commonly serialized to disk
-#[derive(Debug, Clone)]
-pub struct UnifiedInput {
-    /// The number of frames that have elapsed since the app began
-    pub frame: FrameCount,
-    /// The amount of time that has elapsed since the app began
-    pub time_since_startup: Duration,
-    /// The [`InputEvent`] that was captured
-    pub input_event: InputEvent,
-}
-
-/// The number of frames that have elapsed since the app started
-///
-/// Updated in [`time_tracker`] during [`CoreStage::First`].
-#[derive(Clone, Copy, Debug, Default)]
-pub struct FrameCount(pub u64);
-
-/// Collects input-relevant events for use in [`UnifiedInput`]
-#[allow(missing_docs)]
-#[derive(Debug, Clone)]
-pub enum InputEvent {
-    Keyboard(KeyboardInput),
-    MouseButton(MouseButtonInput),
-    MouseWheel(MouseWheel),
-    CursorMoved(CursorMoved),
-}
-
-impl From<KeyboardInput> for InputEvent {
-    fn from(event: KeyboardInput) -> Self {
-        InputEvent::Keyboard(event)
-    }
-}
-
-impl From<MouseButtonInput> for InputEvent {
-    fn from(event: MouseButtonInput) -> Self {
-        InputEvent::MouseButton(event)
-    }
-}
-
-impl From<MouseWheel> for InputEvent {
-    fn from(event: MouseWheel) -> Self {
-        InputEvent::MouseWheel(event)
-    }
-}
-
-impl From<CursorMoved> for InputEvent {
-    fn from(event: CursorMoved) -> Self {
-        InputEvent::CursorMoved(event)
-    }
-}
+use crate::frame_counting::{frame_counter, FrameCount};
+use crate::timestamped_input::TimestampedInputs;
 
 /// Captures user inputs from the assorted raw `Event` types
 ///
-/// These are collected into a [`UnifiedInput`] event stream.
+/// These are collected into a [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource.
+/// Which input modes (mouse, keyboard, etc) are captured is controlled via the [`InputModesCaptured`] resource.
 pub struct InputCapturePlugin;
 
 impl Plugin for InputCapturePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<FrameCount>()
-            .add_event::<UnifiedInput>()
-            .add_system_to_stage(CoreStage::First, frame_counter)
-            .add_system_set_to_stage(
+        // Avoid double-adding frame_counter
+        if !app.world.contains_resource::<FrameCount>() {
+            app.init_resource::<FrameCount>()
+                .add_system_to_stage(CoreStage::First, frame_counter);
+        }
+
+        app.init_resource::<TimestampedInputs>()
+            .init_resource::<InputModesCaptured>()
+            .add_system_to_stage(
                 // Capture any mocked input as well
                 CoreStage::Last,
-                SystemSet::new()
-                    .with_system(capture_mouse_input)
-                    .with_system(capture_keyboard_input),
+                capture_input,
             );
     }
 }
 
-/// Increases the value of the [`FrameCount`] resource by 1 every frame
+/// The input mechanisms captured via the [`InputCapturePlugin`], configured as a resource.
 ///
-/// This system should run during [`CoreStage::First`].
-pub fn frame_counter(mut frame_count: ResMut<FrameCount>) {
-    frame_count.0 += 1;
+/// By default, all supported input modes will be captured.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct InputModesCaptured {
+    /// Mouse buttons and mouse wheel inputs
+    pub mouse_buttons: bool,
+    /// Moving the mouse
+    pub mouse_motion: bool,
+    /// Keyboard inputs (both keycodes and scancodes)
+    pub keyboard: bool,
 }
 
-/// Captures mouse-driven input from the [`MouseButtonInput`] event stream
+impl InputModesCaptured {
+    /// Disables all input capturing
+    pub const DISABLE_ALL: InputModesCaptured = InputModesCaptured {
+        mouse_buttons: false,
+        mouse_motion: false,
+        keyboard: false,
+    };
+
+    /// Captures all supported input modes
+    pub const ENABLE_ALL: InputModesCaptured = InputModesCaptured {
+        mouse_buttons: true,
+        mouse_motion: true,
+        keyboard: true,
+    };
+}
+
+impl Default for InputModesCaptured {
+    fn default() -> Self {
+        InputModesCaptured::ENABLE_ALL
+    }
+}
+
+/// Captures input from the [`bevy_window`] and [`bevy_input`] event streams.
 ///
-/// Limitations:
-///  - the unit of mouse scrolling is discarded; when played back this is assumed to be pixels
-///  - mouse inputs performed with a locked window will be lost, as [`MouseMotion`](bevy::input::mouse::MouseMotion) events are not captured
-///  - this is not robust to multiple windows; the window that the mouse is on is lost
-pub fn capture_mouse_input(
+/// The input modes can be controlled via the [`InputModesCaptured`] resource.
+#[allow(clippy::too_many_arguments)]
+pub fn capture_input(
     mut mouse_button_events: EventReader<MouseButtonInput>,
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut cursor_moved_events: EventReader<CursorMoved>,
-    mut unified_input: EventWriter<UnifiedInput>,
+    mut keyboard_events: EventReader<KeyboardInput>,
+    mut timestamped_input: ResMut<TimestampedInputs>,
+    input_modes_captured: Res<InputModesCaptured>,
     frame_count: Res<FrameCount>,
     time: Res<Time>,
 ) {
@@ -109,46 +91,30 @@ pub fn capture_mouse_input(
     // BLOCKED: these events are arbitrarily ordered within a frame,
     // but we have no way to access their order from winit.
     // See https://github.com/bevyengine/bevy/issues/5984
-    for input_event in mouse_button_events.iter().cloned() {
-        unified_input.send(UnifiedInput {
+
+    if input_modes_captured.mouse_buttons {
+        timestamped_input.send_multiple(
             frame,
             time_since_startup,
-            input_event: input_event.into(),
-        })
+            mouse_button_events.iter().cloned(),
+        );
+
+        timestamped_input.send_multiple(
+            frame,
+            time_since_startup,
+            mouse_wheel_events.iter().cloned(),
+        );
     }
 
-    for input_event in mouse_wheel_events.iter().cloned() {
-        unified_input.send(UnifiedInput {
+    if input_modes_captured.mouse_motion {
+        timestamped_input.send_multiple(
             frame,
             time_since_startup,
-            input_event: input_event.into(),
-        })
+            cursor_moved_events.iter().cloned(),
+        );
     }
 
-    for input_event in cursor_moved_events.iter().cloned() {
-        unified_input.send(UnifiedInput {
-            frame,
-            time_since_startup,
-            input_event: input_event.into(),
-        })
-    }
-}
-
-/// Captures [`KeyCode`](bevy_input::keyboard::KeyCode) input from the [`MouseButtonInput`] stream
-pub fn capture_keyboard_input(
-    mut keyboard_events: EventReader<KeyboardInput>,
-    mut unified_input: EventWriter<UnifiedInput>,
-    frame_count: Res<FrameCount>,
-    time: Res<Time>,
-) {
-    let time_since_startup = time.time_since_startup();
-    let frame = *frame_count;
-
-    for input_event in keyboard_events.iter().cloned() {
-        unified_input.send(UnifiedInput {
-            frame,
-            time_since_startup,
-            input_event: input_event.into(),
-        })
+    if input_modes_captured.keyboard {
+        timestamped_input.send_multiple(frame, time_since_startup, keyboard_events.iter().cloned());
     }
 }
