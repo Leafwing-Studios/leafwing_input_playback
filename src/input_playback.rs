@@ -161,8 +161,6 @@ pub fn playback_unified_input(
             // If we've covered the entire range, reset our progress
             if playback_progress.current_frame(start) > end {
                 playback_progress.reset(&mut *unified_input);
-                // We only want to play back once, so pause.
-                *playback_strategy = PlaybackStrategy::Paused;
             }
         }
         PlaybackStrategy::Paused => {
