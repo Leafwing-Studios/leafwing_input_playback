@@ -148,7 +148,7 @@ impl UnifiedInput {
     }
 
     /// Returns an iterator over recorded events starting from (inclusive) the start time,
-    /// and until (inclusive) the end time. Note that this can re-read events:
+    /// and until (exclusive) the end time. Note that this can re-read events:
     /// the cursor is reset before searching for the start of the range.
     ///
     /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
@@ -161,8 +161,7 @@ impl UnifiedInput {
         debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
         let mut cursor = 0;
-        while self.cursor < self.events.len() && self.events[cursor].time_since_startup <= end_time
-        {
+        while self.cursor < self.events.len() && self.events[cursor].time_since_startup < end_time {
             if self.events[cursor].time_since_startup >= start_time {
                 result.push(self.events[cursor].clone());
             }
@@ -173,7 +172,7 @@ impl UnifiedInput {
     }
 
     /// Returns an iterator over recorded events starting from (inclusive) the start frame,
-    /// and until (inclusive) the end frame. Note that this can re-read events:
+    /// and until (exclusive) the end frame. Note that this can re-read events:
     /// the cursor is reset before searching for the start of the range.
     ///
     /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
@@ -186,7 +185,7 @@ impl UnifiedInput {
         debug_assert!(self.is_sorted(SortingStrategy::FrameCount));
         let mut result = Vec::with_capacity(self.events.len());
         let mut cursor = 0;
-        while self.cursor < self.events.len() && self.events[cursor].frame <= end_frame {
+        while self.cursor < self.events.len() && self.events[cursor].frame < end_frame {
             if self.events[cursor].frame >= start_frame {
                 result.push(self.events[cursor].clone());
             }

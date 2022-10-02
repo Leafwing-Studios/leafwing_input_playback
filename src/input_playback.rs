@@ -30,6 +30,7 @@ impl Plugin for InputPlaybackPlugin {
         }
 
         app.init_resource::<UnifiedInput>()
+            .init_resource::<PlaybackProgress>()
             .init_resource::<PlaybackStrategy>()
             .add_system_to_stage(
                 CoreStage::First,
@@ -52,14 +53,26 @@ pub enum PlaybackStrategy {
     ///
     /// This strategy is faster, as you can turn off any frame rate limiting mechanism.
     FrameCount,
-    /// Plays events between the first and second [`Duration`], measured in time since app startup.
+    /// Plays events between the first and second [`Duration`] once, measured in time since app startup.
     ///
-    /// This range is inclusive at the bottom, but exclusive at the top to avoid double-counting.
-    TimeRange(Duration, Duration),
-    /// Plays events between the first and second [`FrameCount`].
+    /// The events are played back at the same rate they were captured.
+    /// This range includes events sent at the start of the range, but not the end.
+    TimeRangeOnce(Duration, Duration),
+    /// Plays events between the first and second [`Duration`] indefinitely, measured in time since app startup.
     ///
-    /// This range is inclusive at the bottom, but exclusive at the top to avoid double-counting.
-    FrameRange(FrameCount, FrameCount),
+    /// The events are played back at the same rate they were captured.
+    /// This range includes events sent at the start of the range, but not the end.
+    TimeRangeLoop(Duration, Duration),
+    /// Plays events between the first and second [`FrameCount`] once.
+    ///
+    /// The events are played back at the same rate they were captured.
+    /// This range includes events sent at the start of the range, but not the end.
+    FrameRangeOnce(FrameCount, FrameCount),
+    /// Plays events between the first and second [`FrameCount`] indefinitely.
+    ///
+    /// The events are played back at the same rate they were captured.
+    /// This range includes events sent at the start of the range, but not the end.
+    FrameRangeLoop(FrameCount, FrameCount),
     /// Does not playback any events.
     ///
     /// This is useful for interactive use cases, to temporarily disable sending events.
@@ -82,32 +95,107 @@ pub struct InputWriters<'w, 's> {
 /// The strategy used is based on [`PlaybackStrategy`].
 pub fn playback_unified_input(
     mut unified_input: ResMut<UnifiedInput>,
-    playback_strategy: Res<PlaybackStrategy>,
+    mut playback_strategy: ResMut<PlaybackStrategy>,
     time: Res<Time>,
     frame_count: Res<FrameCount>,
     mut input_writers: InputWriters,
+    mut playback_progress: ResMut<PlaybackProgress>,
 ) {
-    use PlaybackStrategy::*;
-
     // We cannot store the iterator, as different opaque return types are used
     match *playback_strategy {
-        Time => {
+        PlaybackStrategy::Time => {
             let input_events = unified_input.iter_until_time(time.time_since_startup());
             send_playback_events(input_events, &mut input_writers);
         }
-        FrameCount => {
+        PlaybackStrategy::FrameCount => {
             let input_events = unified_input.iter_until_frame(*frame_count);
             send_playback_events(input_events, &mut input_writers);
         }
-        TimeRange(start, end) => {
-            let input_events = unified_input.iter_between_times(start, end);
+        PlaybackStrategy::TimeRangeOnce(start, end) => {
+            if playback_progress.initial_time.is_none() {
+                playback_progress.initial_time = Some(time.time_since_startup());
+            }
+            let initial_time = playback_progress.initial_time.unwrap();
+
+            let playback_start = playback_progress.last_seen_time.unwrap_or(start);
+            // Make sure we're advancing at a one-to-one rate
+            let playback_end = initial_time + time.delta();
+            playback_progress.last_seen_time = Some(playback_end);
+
+            let input_events =
+                unified_input.iter_between_times(playback_start, playback_end.min(end));
             send_playback_events(input_events, &mut input_writers);
+
+            // If we've covered the entire range, reset our progress
+            if playback_end > end {
+                *playback_progress = PlaybackProgress::default();
+                // We only want to play back once, so pause.
+                *playback_strategy = PlaybackStrategy::Paused;
+            }
         }
-        FrameRange(start, end) => {
-            let input_events = unified_input.iter_between_frames(start, end);
-            send_playback_events(input_events, &mut input_writers)
+        PlaybackStrategy::FrameRangeOnce(start, end) => {
+            if playback_progress.initial_frame.is_none() {
+                playback_progress.initial_frame = Some(*frame_count);
+            }
+            let initial_frame = playback_progress.initial_frame.unwrap();
+
+            let playback_start = playback_progress.last_seen_frame.unwrap_or(start);
+            // Make sure we're advancing at a one-to-one rate
+            let playback_end = initial_frame + FrameCount(1);
+            playback_progress.last_seen_frame = Some(playback_end);
+
+            let input_events =
+                unified_input.iter_between_frames(playback_start, playback_end.min(end));
+            send_playback_events(input_events, &mut input_writers);
+
+            // If we've covered the entire range, reset our progress
+            if playback_end > end {
+                *playback_progress = PlaybackProgress::default();
+                // We only want to play back once, so pause.
+                *playback_strategy = PlaybackStrategy::Paused;
+            }
         }
-        Paused => {
+        PlaybackStrategy::TimeRangeLoop(start, end) => {
+            if playback_progress.initial_time.is_none() {
+                playback_progress.initial_time = Some(time.time_since_startup());
+            }
+            let initial_time = playback_progress.initial_time.unwrap();
+
+            let playback_start = playback_progress.last_seen_time.unwrap_or(start);
+            // Make sure we're advancing at a one-to-one rate
+            let playback_end = initial_time + time.delta();
+            playback_progress.last_seen_time = Some(playback_end);
+
+            let input_events =
+                unified_input.iter_between_times(playback_start, playback_end.min(end));
+            send_playback_events(input_events, &mut input_writers);
+
+            // If we've covered the entire range, reset our progress
+            if playback_end > end {
+                *playback_progress = PlaybackProgress::default();
+            }
+        }
+        PlaybackStrategy::FrameRangeLoop(start, end) => {
+            if playback_progress.initial_frame.is_none() {
+                playback_progress.initial_frame = Some(*frame_count);
+            }
+            let initial_frame = playback_progress.initial_frame.unwrap();
+
+            let playback_start = playback_progress.last_seen_frame.unwrap_or(start);
+            // Make sure we're advancing at a one-to-one rate
+            let playback_end = initial_frame + FrameCount(1);
+            playback_progress.last_seen_frame = Some(playback_end);
+
+            let input_events =
+                unified_input.iter_between_frames(playback_start, playback_end.min(end));
+            send_playback_events(input_events, &mut input_writers);
+
+            // If we've covered the entire range, reset our progress
+            if playback_end > end {
+                *playback_progress = PlaybackProgress::default();
+            }
+        }
+        PlaybackStrategy::Paused => {
             // Do nothing
         }
     };
@@ -126,4 +214,15 @@ fn send_playback_events(
             CursorMoved(e) => input_writers.cursor_moved.send(e),
         };
     }
+}
+
+/// How far through the current cycle of input playback we've gotten.
+///
+/// Used in the [`playback_unified_input`] system to track progress.
+#[derive(Default, Debug, PartialEq)]
+pub struct PlaybackProgress {
+    initial_time: Option<Duration>,
+    last_seen_time: Option<Duration>,
+    initial_frame: Option<FrameCount>,
+    last_seen_frame: Option<FrameCount>,
 }

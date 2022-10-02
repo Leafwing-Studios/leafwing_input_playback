@@ -1,5 +1,6 @@
 // BLOCKED: add time strategy tests: https://github.com/bevyengine/bevy/issues/6146
 
+use bevy::ecs::system::SystemState;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
 use bevy::input::InputPlugin;
@@ -152,27 +153,50 @@ fn playback_strategy_frame() {
 }
 
 #[test]
-fn playback_strategy_frame_slice() {
-    let mut app = playback_app(PlaybackStrategy::FrameRange(FrameCount(1), FrameCount(2)));
+fn playback_strategy_frame_slice_once() {
+    let strategy = PlaybackStrategy::FrameRangeOnce(FrameCount(2), FrameCount(5));
+    let mut app = playback_app(strategy);
     *app.world.resource_mut::<UnifiedInput>() = complex_unified_input();
 
     let unified_input = app.world.resource::<UnifiedInput>();
     assert_eq!(unified_input.cursor, 0);
 
-    // Replays the events betweeen frame 1 and 2 (inclusive)
+    // Replays the events in the frame range [2, 5)
+    // This playback strategy plays back the inputs one frame at a time until the entire range is captured
+    // Then swaps to PlaybackStrategy::Paused
     app.update();
-    let input_events = app.world.resource::<Events<KeyboardInput>>();
-    // Check complex_unified_input to verify this value
-    assert_eq!(input_events.len(), 3);
-
-    // This playback strategy continues to replay the events each frame
-    app.update();
-    let input_events = app.world.resource::<Events<KeyboardInput>>();
-    // Events are double-buffered
-    assert_eq!(input_events.len(), 6);
+    let mut system_state: SystemState<EventReader<KeyboardInput>> =
+        SystemState::new(&mut app.world);
+    let input_events = system_state.get(&app.world);
+    // Frame 2
+    assert_eq!(input_events.len(), 1);
 
     app.update();
-    let input_events = app.world.resource::<Events<KeyboardInput>>();
-    // The same events keep getting sent
-    assert_eq!(input_events.len(), 6);
+    let mut system_state: SystemState<EventReader<KeyboardInput>> =
+        SystemState::new(&mut app.world);
+    let input_events = system_state.get(&app.world);
+    // Frame 3
+    assert_eq!(input_events.len(), 2);
+
+    app.update();
+    let mut system_state: SystemState<EventReader<KeyboardInput>> =
+        SystemState::new(&mut app.world);
+    let input_events = system_state.get(&app.world);
+    // Frame 4
+    assert_eq!(*app.world.resource::<PlaybackStrategy>(), strategy);
+    assert_eq!(input_events.len(), 0);
+
+    app.update();
+    let mut system_state: SystemState<EventReader<KeyboardInput>> =
+        SystemState::new(&mut app.world);
+    let input_events = system_state.get(&app.world);
+    // Paused
+    assert_eq!(input_events.len(), 0);
+    assert_eq!(
+        *app.world.resource::<PlaybackStrategy>(),
+        PlaybackStrategy::Paused
+    );
 }
+
+#[test]
+fn playback_strategy_frame_slice_loop() {}
