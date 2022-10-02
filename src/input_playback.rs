@@ -120,7 +120,7 @@ pub fn playback_unified_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_time(start) > end {
-                playback_progress.reset();
+                playback_progress.reset(&mut *unified_input);
                 // We only want to play back once, so pause.
                 *playback_strategy = PlaybackStrategy::Paused;
             }
@@ -134,7 +134,7 @@ pub fn playback_unified_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_frame(start) > end {
-                playback_progress.reset();
+                playback_progress.reset(&mut *unified_input);
                 // We only want to play back once, so pause.
                 *playback_strategy = PlaybackStrategy::Paused;
             }
@@ -148,7 +148,7 @@ pub fn playback_unified_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_time(start) > end {
-                playback_progress.reset();
+                playback_progress.reset(&mut *unified_input);
             }
         }
         PlaybackStrategy::FrameRangeLoop(start, end) => {
@@ -160,7 +160,7 @@ pub fn playback_unified_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_frame(start) > end {
-                playback_progress.reset();
+                playback_progress.reset(&mut *unified_input);
                 // We only want to play back once, so pause.
                 *playback_strategy = PlaybackStrategy::Paused;
             }
@@ -175,6 +175,7 @@ fn send_playback_events(
     timestamped_input_events: impl IntoIterator<Item = TimestampedInputEvent>,
     input_writers: &mut InputWriters,
 ) {
+    // We must be caeful not to consume these values
     for timestamped_input_event in timestamped_input_events {
         use crate::unified_input::InputEvent::*;
         match timestamped_input_event.input_event {
@@ -192,7 +193,7 @@ fn send_playback_events(
 /// the offset between the actual time (frame count) and the time (frame count) of the recording.
 ///
 /// Used in the [`playback_unified_input`] system to track progress.
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Clone)]
 pub struct PlaybackProgress {
     /// The [`Duration`] that this playback loop has been running for
     pub elapsed_time: Duration,
@@ -240,7 +241,8 @@ impl PlaybackProgress {
     /// Resets all tracked progress.
     ///
     /// This is called when the current pass of the playback loop elapses.
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, unified_input: &mut UnifiedInput) {
+        unified_input.cursor = 0;
         *self = Self::default();
     }
 }
