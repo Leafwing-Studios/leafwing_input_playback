@@ -112,87 +112,65 @@ pub fn playback_unified_input(
             send_playback_events(input_events, &mut input_writers);
         }
         PlaybackStrategy::TimeRangeOnce(start, end) => {
-            if playback_progress.initial_time.is_none() {
-                playback_progress.initial_time = Some(time.time_since_startup());
-            }
-            let initial_time = playback_progress.initial_time.unwrap();
+            playback_progress.set_initial_time(time.time_since_startup());
 
-            let playback_start = playback_progress.last_seen_time.unwrap_or(start);
-            // Make sure we're advancing at a one-to-one rate
-            let playback_end = initial_time + time.delta();
-            playback_progress.last_seen_time = Some(playback_end);
-
-            let input_events =
-                unified_input.iter_between_times(playback_start, playback_end.min(end));
+            let input_events = unified_input.iter_between_times(
+                playback_progress.current_time(start),
+                playback_progress.next_time(time.delta(), start),
+            );
             send_playback_events(input_events, &mut input_writers);
 
             // If we've covered the entire range, reset our progress
-            if playback_end > end {
-                *playback_progress = PlaybackProgress::default();
+            if playback_progress.current_time(start) > end {
+                playback_progress.reset();
                 // We only want to play back once, so pause.
                 *playback_strategy = PlaybackStrategy::Paused;
             }
         }
         PlaybackStrategy::FrameRangeOnce(start, end) => {
-            if playback_progress.initial_frame.is_none() {
-                playback_progress.initial_frame = Some(*frame_count);
-            }
-            let initial_frame = playback_progress.initial_frame.unwrap();
+            playback_progress.set_initial_frame(*frame_count);
 
-            let playback_start = playback_progress.last_seen_frame.unwrap_or(start);
-            // Make sure we're advancing at a one-to-one rate
-            let playback_end = initial_frame + FrameCount(1);
-            playback_progress.last_seen_frame = Some(playback_end);
-
-            let input_events =
-                unified_input.iter_between_frames(playback_start, playback_end.min(end));
+            let input_events = unified_input.iter_between_frames(
+                playback_progress.current_frame(start),
+                playback_progress.next_frame(start),
+            );
             send_playback_events(input_events, &mut input_writers);
 
             // If we've covered the entire range, reset our progress
-            if playback_end > end {
-                *playback_progress = PlaybackProgress::default();
+            if playback_progress.current_frame(start) > end {
+                playback_progress.reset();
                 // We only want to play back once, so pause.
                 *playback_strategy = PlaybackStrategy::Paused;
             }
         }
         PlaybackStrategy::TimeRangeLoop(start, end) => {
-            if playback_progress.initial_time.is_none() {
-                playback_progress.initial_time = Some(time.time_since_startup());
-            }
-            let initial_time = playback_progress.initial_time.unwrap();
+            playback_progress.set_initial_time(time.time_since_startup());
 
-            let playback_start = playback_progress.last_seen_time.unwrap_or(start);
-            // Make sure we're advancing at a one-to-one rate
-            let playback_end = initial_time + time.delta();
-            playback_progress.last_seen_time = Some(playback_end);
-
-            let input_events =
-                unified_input.iter_between_times(playback_start, playback_end.min(end));
+            let input_events = unified_input.iter_between_times(
+                playback_progress.current_time(start),
+                playback_progress.next_time(time.delta(), start),
+            );
             send_playback_events(input_events, &mut input_writers);
 
             // If we've covered the entire range, reset our progress
-            if playback_end > end {
-                *playback_progress = PlaybackProgress::default();
+            if playback_progress.current_time(start) > end {
+                playback_progress.reset();
             }
         }
         PlaybackStrategy::FrameRangeLoop(start, end) => {
-            if playback_progress.initial_frame.is_none() {
-                playback_progress.initial_frame = Some(*frame_count);
-            }
-            let initial_frame = playback_progress.initial_frame.unwrap();
+            playback_progress.set_initial_frame(*frame_count);
 
-            let playback_start = playback_progress.last_seen_frame.unwrap_or(start);
-            // Make sure we're advancing at a one-to-one rate
-            let playback_end = initial_frame + FrameCount(1);
-            playback_progress.last_seen_frame = Some(playback_end);
-
-            let input_events =
-                unified_input.iter_between_frames(playback_start, playback_end.min(end));
+            let input_events = unified_input.iter_between_frames(
+                playback_progress.current_frame(start),
+                playback_progress.next_frame(start),
+            );
             send_playback_events(input_events, &mut input_writers);
 
             // If we've covered the entire range, reset our progress
-            if playback_end > end {
-                *playback_progress = PlaybackProgress::default();
+            if playback_progress.current_frame(start) > end {
+                playback_progress.reset();
+                // We only want to play back once, so pause.
+                *playback_strategy = PlaybackStrategy::Paused;
             }
         }
         PlaybackStrategy::Paused => {
@@ -218,11 +196,150 @@ fn send_playback_events(
 
 /// How far through the current cycle of input playback we've gotten.
 ///
+/// The `initial_time` and `initial_frame` are stored to be able to compute
+/// the offset between the actual time (frame count) and the time (frame count) of the recording.
+///
 /// Used in the [`playback_unified_input`] system to track progress.
 #[derive(Default, Debug, PartialEq)]
 pub struct PlaybackProgress {
-    initial_time: Option<Duration>,
-    last_seen_time: Option<Duration>,
-    initial_frame: Option<FrameCount>,
-    last_seen_frame: Option<FrameCount>,
+    /// The actual [`Time`], as measured by the [`App`], when this playback loop started
+    pub initial_time: Option<Duration>,
+    /// The [`Duration`] that this playback loop has been running for
+    pub elapsed_time: Duration,
+    /// The actual [`FrameCount`], as measured by the [`App`], when this playback loop started
+    pub initial_frame: Option<FrameCount>,
+    /// The number of frames that this playback loop has been running for
+    pub elapsed_frames: FrameCount,
+}
+
+impl PlaybackProgress {
+    /// Sets the initial time and resets the elapsed time.
+    ///
+    /// This method is idempotent: it will have no effect if the `initial_time` is already `Some`.
+    pub fn set_initial_time(&mut self, time_since_startup: Duration) {
+        if self.initial_time.is_none() {
+            self.initial_time = Some(time_since_startup);
+            self.elapsed_time = Duration::from_secs(0);
+        }
+    }
+
+    /// Sets the initial frame and resets the elapsed frames.
+    ///
+    /// Initial frame will only be set if it was not already.
+    pub fn set_initial_frame(&mut self, current_frame: FrameCount) {
+        if self.initial_frame.is_none() {
+            self.initial_frame = Some(current_frame);
+            self.elapsed_frames = FrameCount(0);
+        }
+    }
+
+    /// Gets the current frame.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self.initial_frame` is `None`. Make sure to call `set_initial_frame` first!
+    pub fn current_frame(&self, start: FrameCount) -> FrameCount {
+        self.initial_frame.unwrap() + self.elapsed_frames - start
+    }
+
+    /// Gets the current time.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self.initial_time` is `None`. Make sure to call `set_initial_time` first!
+    pub fn current_time(&self, start: Duration) -> Duration {
+        self.initial_time.unwrap() + self.elapsed_time - start
+    }
+
+    /// Get the start of the next frame window to play back.
+    ///
+    /// This also records that one frame has elapsed.
+    pub fn next_frame(&mut self, start: FrameCount) -> FrameCount {
+        self.elapsed_frames = self.elapsed_frames + FrameCount(1);
+        // The frame count has been advanced, so this returns the correct value
+        self.current_frame(start)
+    }
+
+    /// Get the start of the next time window to play back.
+    ///
+    /// This also records that a `delta` of time has elapsed.
+    pub fn next_time(&mut self, delta: Duration, start: Duration) -> Duration {
+        self.elapsed_time = self.elapsed_time + delta;
+        // Time has been advanced, so this returns the correct value
+        self.current_time(start)
+    }
+
+    /// Resets all tracked progress.
+    ///
+    /// This is called when the current pass of the playback loop elapses.
+    pub fn reset(&mut self) {
+        *self = Self::default();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recorded_time_lt_real_time() {
+        let mut progress = PlaybackProgress::default();
+        let start = Duration::from_secs(1);
+        let time_since_startup = Duration::from_secs(10);
+
+        progress.set_initial_time(time_since_startup);
+        assert_eq!(progress.current_time(start), start);
+
+        let delta = Duration::from_secs(1);
+        let next_time = progress.next_time(delta, start);
+        assert_eq!(next_time, start + delta);
+        assert_eq!(progress.elapsed_time, delta);
+    }
+
+    #[test]
+    fn recorded_time_gt_real_time() {
+        let mut progress = PlaybackProgress::default();
+        let start = Duration::from_secs(10);
+        let time_since_startup = Duration::from_secs(1);
+
+        progress.set_initial_time(time_since_startup);
+        assert_eq!(progress.current_time(start), start);
+
+        let delta = Duration::from_secs(1);
+        let next_time = progress.next_time(delta, start);
+        assert_eq!(next_time, start + delta);
+        assert_eq!(progress.elapsed_time, delta);
+    }
+
+    #[test]
+    fn recorded_frame_lt_real_frame() {
+        let mut progress = PlaybackProgress::default();
+
+        let start = FrameCount(1);
+        let frames_since_startup = FrameCount(10);
+
+        progress.set_initial_frame(frames_since_startup);
+        assert_eq!(progress.current_frame(start), start);
+
+        let delta = FrameCount(1);
+        let next_frame = progress.next_frame(start);
+        assert_eq!(next_frame, start + delta);
+        assert_eq!(progress.elapsed_frames, delta);
+    }
+
+    #[test]
+    fn recorded_frame_gt_real_frame() {
+        let mut progress = PlaybackProgress::default();
+
+        let start = FrameCount(10);
+        let frames_since_startup = FrameCount(1);
+
+        progress.set_initial_frame(frames_since_startup);
+        assert_eq!(progress.current_frame(start), start);
+
+        let delta = FrameCount(1);
+        let next_frame = progress.next_frame(start);
+        assert_eq!(next_frame, start + delta);
+        assert_eq!(progress.elapsed_frames, delta);
+    }
 }
