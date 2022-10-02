@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use leafwing_input_playback::{
     input_capture::{InputCapturePlugin, InputModesCaptured},
     input_playback::{InputPlaybackPlugin, PlaybackStrategy},
+    unified_input::UnifiedInput,
 };
 
 fn main() {
@@ -94,6 +95,7 @@ fn decay_boxes(mut query: Query<(Entity, &mut Transform), With<Box>>, mut comman
 fn toggle_input_capture(
     mut input_modes: ResMut<InputModesCaptured>,
     keyboard_input: Res<Input<KeyCode>>,
+    mut unified_input: ResMut<UnifiedInput>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         if !input_modes.mouse_motion {
@@ -102,6 +104,9 @@ fn toggle_input_capture(
                 mouse_motion: true,
                 ..default()
             };
+
+            // Reset all input data, starting a new recording
+            *unified_input = UnifiedInput::default();
 
             info!("Input is now being captured.");
         } else {
@@ -114,16 +119,25 @@ fn toggle_input_capture(
 fn toggle_input_playback(
     keyboard_input: Res<Input<KeyCode>>,
     mut playback_strategy: ResMut<PlaybackStrategy>,
+    unified_input: Res<UnifiedInput>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Return) {
         *playback_strategy = match *playback_strategy {
-            PlaybackStrategy::FrameCount => {
+            PlaybackStrategy::FrameRangeOnce(_, _) => {
                 info!("Input playback is now paused.");
                 PlaybackStrategy::Paused
             }
             PlaybackStrategy::Paused => {
                 info!("Input is playing back.");
-                PlaybackStrategy::FrameCount
+                if let Some(start) = unified_input.start_frame() {
+                    if let Some(end) = unified_input.end_frame() {
+                        PlaybackStrategy::FrameRangeOnce(start, end)
+                    } else {
+                        PlaybackStrategy::Paused
+                    }
+                } else {
+                    PlaybackStrategy::Paused
+                }
             }
             _ => unreachable!(),
         }

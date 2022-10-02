@@ -78,6 +78,30 @@ impl UnifiedInput {
         self.cursor = 0;
     }
 
+    /// Get the earliest [`FrameCount`] of all events stored
+    pub fn start_frame(&self) -> Option<FrameCount> {
+        debug_assert!(self.is_sorted(SortingStrategy::FrameCount));
+        self.events.first().map(|e| e.frame)
+    }
+
+    /// Get the latest [`FrameCount`] of all events stored
+    pub fn end_frame(&self) -> Option<FrameCount> {
+        debug_assert!(self.is_sorted(SortingStrategy::FrameCount));
+        self.events.last().map(|e| e.frame)
+    }
+
+    /// Get the earlist timestamp of all events stored
+    pub fn start_time(&self) -> Option<Duration> {
+        debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
+        self.events.first().map(|e| e.time_since_startup)
+    }
+
+    /// Get the latest timestamp of all events stored
+    pub fn end_time(&self) -> Option<Duration> {
+        debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
+        self.events.last().map(|e| e.time_since_startup)
+    }
+
     /// Gets the total length of the event stream
     pub fn len(&self) -> usize {
         self.events.len()
