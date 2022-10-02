@@ -112,8 +112,6 @@ pub fn playback_unified_input(
             send_playback_events(input_events, &mut input_writers);
         }
         PlaybackStrategy::TimeRangeOnce(start, end) => {
-            playback_progress.set_initial_time(time.time_since_startup());
-
             let input_events = unified_input.iter_between_times(
                 playback_progress.current_time(start),
                 playback_progress.next_time(time.delta(), start),
@@ -128,8 +126,6 @@ pub fn playback_unified_input(
             }
         }
         PlaybackStrategy::FrameRangeOnce(start, end) => {
-            playback_progress.set_initial_frame(*frame_count);
-
             let input_events = unified_input.iter_between_frames(
                 playback_progress.current_frame(start),
                 playback_progress.next_frame(start),
@@ -144,8 +140,6 @@ pub fn playback_unified_input(
             }
         }
         PlaybackStrategy::TimeRangeLoop(start, end) => {
-            playback_progress.set_initial_time(time.time_since_startup());
-
             let input_events = unified_input.iter_between_times(
                 playback_progress.current_time(start),
                 playback_progress.next_time(time.delta(), start),
@@ -158,8 +152,6 @@ pub fn playback_unified_input(
             }
         }
         PlaybackStrategy::FrameRangeLoop(start, end) => {
-            playback_progress.set_initial_frame(*frame_count);
-
             let input_events = unified_input.iter_between_frames(
                 playback_progress.current_frame(start),
                 playback_progress.next_frame(start),
@@ -202,44 +194,20 @@ fn send_playback_events(
 /// Used in the [`playback_unified_input`] system to track progress.
 #[derive(Default, Debug, PartialEq)]
 pub struct PlaybackProgress {
-    /// The actual [`Time`], as measured by the [`App`], when this playback loop started
-    pub initial_time: Option<Duration>,
     /// The [`Duration`] that this playback loop has been running for
     pub elapsed_time: Duration,
-    /// The actual [`FrameCount`], as measured by the [`App`], when this playback loop started
-    pub initial_frame: Option<FrameCount>,
     /// The number of frames that this playback loop has been running for
     pub elapsed_frames: FrameCount,
 }
 
 impl PlaybackProgress {
-    /// Sets the initial time and resets the elapsed time.
-    ///
-    /// This method is idempotent: it will have no effect if the `initial_time` is already `Some`.
-    pub fn set_initial_time(&mut self, time_since_startup: Duration) {
-        if self.initial_time.is_none() {
-            self.initial_time = Some(time_since_startup);
-            self.elapsed_time = Duration::from_secs(0);
-        }
-    }
-
-    /// Sets the initial frame and resets the elapsed frames.
-    ///
-    /// Initial frame will only be set if it was not already.
-    pub fn set_initial_frame(&mut self, current_frame: FrameCount) {
-        if self.initial_frame.is_none() {
-            self.initial_frame = Some(current_frame);
-            self.elapsed_frames = FrameCount(0);
-        }
-    }
-
     /// Gets the current frame.
     ///
     /// # Panics
     ///
     /// Panics if `self.initial_frame` is `None`. Make sure to call `set_initial_frame` first!
     pub fn current_frame(&self, start: FrameCount) -> FrameCount {
-        self.initial_frame.unwrap() + self.elapsed_frames - start
+        start + self.elapsed_frames
     }
 
     /// Gets the current time.
@@ -248,7 +216,7 @@ impl PlaybackProgress {
     ///
     /// Panics if `self.initial_time` is `None`. Make sure to call `set_initial_time` first!
     pub fn current_time(&self, start: Duration) -> Duration {
-        self.initial_time.unwrap() + self.elapsed_time - start
+        start + self.elapsed_time
     }
 
     /// Get the start of the next frame window to play back.
@@ -282,12 +250,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn recorded_time_lt_real_time() {
+    fn current_time() {
         let mut progress = PlaybackProgress::default();
         let start = Duration::from_secs(1);
-        let time_since_startup = Duration::from_secs(10);
 
-        progress.set_initial_time(time_since_startup);
         assert_eq!(progress.current_time(start), start);
 
         let delta = Duration::from_secs(1);
@@ -297,44 +263,11 @@ mod tests {
     }
 
     #[test]
-    fn recorded_time_gt_real_time() {
-        let mut progress = PlaybackProgress::default();
-        let start = Duration::from_secs(10);
-        let time_since_startup = Duration::from_secs(1);
-
-        progress.set_initial_time(time_since_startup);
-        assert_eq!(progress.current_time(start), start);
-
-        let delta = Duration::from_secs(1);
-        let next_time = progress.next_time(delta, start);
-        assert_eq!(next_time, start + delta);
-        assert_eq!(progress.elapsed_time, delta);
-    }
-
-    #[test]
-    fn recorded_frame_lt_real_frame() {
+    fn current_frame() {
         let mut progress = PlaybackProgress::default();
 
         let start = FrameCount(1);
-        let frames_since_startup = FrameCount(10);
 
-        progress.set_initial_frame(frames_since_startup);
-        assert_eq!(progress.current_frame(start), start);
-
-        let delta = FrameCount(1);
-        let next_frame = progress.next_frame(start);
-        assert_eq!(next_frame, start + delta);
-        assert_eq!(progress.elapsed_frames, delta);
-    }
-
-    #[test]
-    fn recorded_frame_gt_real_frame() {
-        let mut progress = PlaybackProgress::default();
-
-        let start = FrameCount(10);
-        let frames_since_startup = FrameCount(1);
-
-        progress.set_initial_frame(frames_since_startup);
         assert_eq!(progress.current_frame(start), start);
 
         let delta = FrameCount(1);
