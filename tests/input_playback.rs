@@ -190,25 +190,25 @@ fn playback_strategy_frame_range_once() {
     // Replays the events in the frame range [2, 5)
     // This playback strategy plays back the inputs one frame at a time until the entire range is captured
     // Then swaps to PlaybackStrategy::Paused
+    // Frame 2
     app.update();
     let input_events = app.world.resource::<Events<KeyboardInput>>();
-    // Frame 2
     assert_eq!(input_events.len(), 2);
 
+    // Frame 3 (events are double buffered)
     app.update();
     let input_events = app.world.resource::<Events<KeyboardInput>>();
-    // Frame 3 (events are double buffered)
     assert_eq!(input_events.len(), 3);
 
+    // Frame 4 (events are double buffered)
     app.update();
     let input_events = app.world.resource::<Events<KeyboardInput>>();
-    // Frame 4 (events are double buffered)
     assert_eq!(*app.world.resource::<PlaybackStrategy>(), strategy);
     assert_eq!(input_events.len(), 1);
 
+    // Paused
     app.update();
     let input_events = app.world.resource::<Events<KeyboardInput>>();
-    // Paused
     assert_eq!(input_events.len(), 0);
     assert_eq!(
         *app.world.resource::<PlaybackStrategy>(),
@@ -228,25 +228,25 @@ fn playback_strategy_frame_range_loop() {
     // Replays the events in the frame range [2, 5)
     // This playback strategy plays back the inputs one frame at a time until the entire range is captured
     // Then swaps to PlaybackStrategy::Paused
+    // Frame 2
     app.update();
     let input_events = app.world.resource::<Events<KeyboardInput>>();
-    // Frame 2
     assert_eq!(input_events.len(), 2);
 
+    // Frame 3 (events are double buffered)
     app.update();
     let input_events = app.world.resource::<Events<KeyboardInput>>();
-    // Frame 3 (events are double buffered)
     assert_eq!(input_events.len(), 3);
 
+    // Frame 4 (events are double buffered)
     app.update();
     let input_events = app.world.resource::<Events<KeyboardInput>>();
-    // Frame 4 (events are double buffered)
     assert_eq!(*app.world.resource::<PlaybackStrategy>(), strategy);
     assert_eq!(input_events.len(), 1);
 
+    // Looping back to frame 2
     app.update();
     let input_events = app.world.resource::<Events<KeyboardInput>>();
-    // Looping back to frame 2
     assert_eq!(input_events.len(), 2);
     assert_eq!(
         *app.world.resource::<PlaybackStrategy>(),
