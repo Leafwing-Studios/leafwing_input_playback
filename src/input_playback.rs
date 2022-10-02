@@ -122,7 +122,7 @@ pub fn playback_timestamped_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_time(start) > end {
-                playback_progress.reset(&mut *timestamped_input);
+                playback_progress.reset(timestamped_input.into_inner());
                 // We only want to play back once, so pause.
                 *playback_strategy = PlaybackStrategy::Paused;
             }
@@ -136,7 +136,7 @@ pub fn playback_timestamped_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_frame(start) > end {
-                playback_progress.reset(&mut *timestamped_input);
+                playback_progress.reset(timestamped_input.into_inner());
                 // We only want to play back once, so pause.
                 *playback_strategy = PlaybackStrategy::Paused;
             }
@@ -150,7 +150,7 @@ pub fn playback_timestamped_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_time(start) > end {
-                playback_progress.reset(&mut *timestamped_input);
+                playback_progress.reset(timestamped_input.into_inner());
             }
         }
         PlaybackStrategy::FrameRangeLoop(start, end) => {
@@ -162,7 +162,7 @@ pub fn playback_timestamped_input(
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_frame(start) > end {
-                playback_progress.reset(&mut *timestamped_input);
+                playback_progress.reset(timestamped_input.into_inner());
             }
         }
         PlaybackStrategy::Paused => {
@@ -193,7 +193,7 @@ fn send_playback_events(
 /// the offset between the actual time (frame count) and the time (frame count) of the recording.
 ///
 /// Used in the [`playback_timestamped_input`] system to track progress.
-#[derive(Default, Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 pub struct PlaybackProgress {
     /// The [`Duration`] that this playback loop has been running for
     pub elapsed_time: Duration,
@@ -233,7 +233,7 @@ impl PlaybackProgress {
     ///
     /// This also records that a `delta` of time has elapsed.
     pub fn next_time(&mut self, delta: Duration, start: Duration) -> Duration {
-        self.elapsed_time = self.elapsed_time + delta;
+        self.elapsed_time += delta;
         // Time has been advanced, so this returns the correct value
         self.current_time(start)
     }

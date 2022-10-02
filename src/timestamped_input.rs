@@ -84,12 +84,8 @@ impl TimestampedInputs {
         let maybe_start = self.events.first().map(|e| e.frame);
         let maybe_end = self.events.last().map(|e| e.frame);
 
-        if let Some(start) = maybe_start {
-            if let Some(end) = maybe_end {
-                Some((start, end))
-            } else {
-                None
-            }
+        if let (Some(start), Some(end)) = (maybe_start, maybe_end) {
+            Some((start, end))
         } else {
             None
         }
@@ -101,12 +97,8 @@ impl TimestampedInputs {
         let maybe_start = self.events.first().map(|e| e.time_since_startup);
         let maybe_end = self.events.last().map(|e| e.time_since_startup);
 
-        if let Some(start) = maybe_start {
-            if let Some(end) = maybe_end {
-                Some((start, end))
-            } else {
-                None
-            }
+        if let (Some(start), Some(end)) = (maybe_start, maybe_end) {
+            Some((start, end))
         } else {
             None
         }
@@ -120,16 +112,6 @@ impl TimestampedInputs {
     /// Checks if the event stream is empty
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
-    }
-
-    /// Fetches the next available event (if any), and advances the internal `cursor` by one
-    pub fn next(&mut self) -> Option<TimestampedInputEvent> {
-        if self.cursor >= self.events.len() {
-            None
-        } else {
-            self.cursor += 1;
-            Some(self.events[self.cursor - 1].clone())
-        }
     }
 
     /// Returns an iterator over all recorded events, beginning at the start of `events`.
@@ -156,7 +138,10 @@ impl TimestampedInputs {
         &mut self,
         time_since_startup: Duration,
     ) -> impl IntoIterator<Item = TimestampedInputEvent> {
-        debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
+        debug_assert!(TimestampedInputs::is_sorted(
+            self,
+            SortingStrategy::TimeSinceStartup
+        ));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
         while self.cursor < self.events.len()
             && self.events[self.cursor].time_since_startup <= time_since_startup
@@ -175,7 +160,10 @@ impl TimestampedInputs {
         &mut self,
         frame: FrameCount,
     ) -> impl IntoIterator<Item = TimestampedInputEvent> {
-        debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
+        debug_assert!(TimestampedInputs::is_sorted(
+            self,
+            SortingStrategy::FrameCount
+        ));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
         while self.cursor < self.events.len() && self.events[self.cursor].frame <= frame {
             result.push(self.events[self.cursor].clone());
@@ -194,7 +182,10 @@ impl TimestampedInputs {
         start_time: Duration,
         end_time: Duration,
     ) -> impl IntoIterator<Item = TimestampedInputEvent> {
-        debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
+        debug_assert!(TimestampedInputs::is_sorted(
+            self,
+            SortingStrategy::TimeSinceStartup
+        ));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
         while self.cursor < self.events.len() {
             let cursor_time = self.events[self.cursor].time_since_startup;
@@ -218,7 +209,10 @@ impl TimestampedInputs {
         start_frame: FrameCount,
         end_frame: FrameCount,
     ) -> impl IntoIterator<Item = TimestampedInputEvent> {
-        debug_assert!(self.is_sorted(SortingStrategy::FrameCount));
+        debug_assert!(TimestampedInputs::is_sorted(
+            self,
+            SortingStrategy::FrameCount
+        ));
         let mut result = Vec::with_capacity(self.events.len());
         while self.cursor < self.events.len() {
             let cursor_frame = self.events[self.cursor].frame;
@@ -285,7 +279,7 @@ impl TimestampedInputs {
         }
     }
 
-    /// The [`InputEvent] of the last-read event.
+    /// The [`InputEvent`] of the last-read event.
     pub fn last_input(&self) -> Option<InputEvent> {
         if self.cursor == 0 {
             return None;
@@ -331,6 +325,18 @@ impl TimestampedInputs {
     pub fn current_time(&self) -> Option<Duration> {
         let next_read = self.events.get(self.cursor)?;
         Some(next_read.time_since_startup)
+    }
+}
+
+impl Iterator for TimestampedInputs {
+    type Item = TimestampedInputEvent;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cursor >= self.events.len() {
+            None
+        } else {
+            self.cursor += 1;
+            Some(self.events[self.cursor - 1].clone())
+        }
     }
 }
 

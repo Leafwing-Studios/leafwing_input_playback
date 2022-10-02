@@ -39,7 +39,7 @@ impl Plugin for InputCapturePlugin {
 /// The input mechanisms captured via the [`InputCapturePlugin`], configured as a resource.
 ///
 /// By default, all supported input modes will be captured.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct InputModesCaptured {
     /// Mouse buttons and mouse wheel inputs
     pub mouse_buttons: bool,
@@ -74,6 +74,7 @@ impl Default for InputModesCaptured {
 /// Captures input from the [`bevy_window`] and [`bevy_input`] event streams.
 ///
 /// The input modes can be controlled via the [`InputModesCaptured`] resource.
+#[allow(clippy::too_many_arguments)]
 pub fn capture_input(
     mut mouse_button_events: EventReader<MouseButtonInput>,
     mut mouse_wheel_events: EventReader<MouseWheel>,
