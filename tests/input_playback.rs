@@ -101,6 +101,7 @@ fn capture_and_playback() {
     assert!(input.pressed(TEST_PRESS.key_code.unwrap()));
 
     app.insert_resource(InputModesCaptured::DISABLE_ALL);
+    // This should trigger playback of input captured so far.
     app.insert_resource(PlaybackStrategy::FrameCount);
 
     app.update();
