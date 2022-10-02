@@ -137,10 +137,7 @@ impl UnifiedInput {
     ) -> impl IntoIterator<Item = TimestampedInputEvent> {
         debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
-        while self.cursor < self.events.len()
-            && self.events[self.cursor].frame <= frame
-            && self.cursor < self.events.len()
-        {
+        while self.cursor < self.events.len() && self.events[self.cursor].frame <= frame {
             result.push(self.events[self.cursor].clone());
             self.cursor += 1;
         }
@@ -148,8 +145,7 @@ impl UnifiedInput {
     }
 
     /// Returns an iterator over recorded events starting from (inclusive) the start time,
-    /// and until (exclusive) the end time. Note that this can re-read events:
-    /// the cursor is reset before searching for the start of the range.
+    /// and until (exclusive) the end time.
     ///
     /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
     #[must_use]
@@ -160,24 +156,20 @@ impl UnifiedInput {
     ) -> impl IntoIterator<Item = TimestampedInputEvent> {
         debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
-        let mut cursor = 0;
         while self.cursor < self.events.len() {
-            if self.events[cursor].time_since_startup >= start_time
-                && self.events[cursor].time_since_startup < end_time
-            {
-                result.push(self.events[cursor].clone());
-            } else if self.events[cursor].time_since_startup >= end_time {
+            let cursor_time = self.events[self.cursor].time_since_startup;
+            if cursor_time >= start_time && cursor_time < end_time {
+                result.push(self.events[self.cursor].clone());
+            } else if cursor_time >= end_time {
                 break;
             }
-            cursor += 1;
+            self.cursor += 1;
         }
-        self.cursor = cursor;
         result
     }
 
     /// Returns an iterator over recorded events starting from (inclusive) the start frame,
-    /// and until (exclusive) the end frame. Note that this can re-read events:
-    /// the cursor is reset before searching for the start of the range.
+    /// and until (exclusive) the end frame.
     ///
     /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
     #[must_use]
@@ -188,16 +180,16 @@ impl UnifiedInput {
     ) -> impl IntoIterator<Item = TimestampedInputEvent> {
         debug_assert!(self.is_sorted(SortingStrategy::FrameCount));
         let mut result = Vec::with_capacity(self.events.len());
-        let mut cursor = 0;
         while self.cursor < self.events.len() {
-            if self.events[cursor].frame >= start_frame && self.events[cursor].frame < end_frame {
-                result.push(self.events[cursor].clone());
-            } else if self.events[cursor].frame >= end_frame {
+            let cursor_frame = self.events[self.cursor].frame;
+
+            if cursor_frame >= start_frame && cursor_frame < end_frame {
+                result.push(self.events[self.cursor].clone());
+            } else if cursor_frame >= end_frame {
                 break;
             }
-            cursor += 1;
+            self.cursor += 1;
         }
-        self.cursor = cursor;
         result
     }
 
