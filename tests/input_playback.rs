@@ -244,6 +244,9 @@ fn playback_strategy_frame_range_loop() {
     assert_eq!(*app.world.resource::<PlaybackStrategy>(), strategy);
     assert_eq!(input_events.len(), 1);
 
+    // Spacing frame
+    app.update();
+
     // Looping back to frame 2
     app.update();
     let input_events = app.world.resource::<Events<KeyboardInput>>();

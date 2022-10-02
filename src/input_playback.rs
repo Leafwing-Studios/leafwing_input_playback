@@ -62,6 +62,7 @@ pub enum PlaybackStrategy {
     ///
     /// The events are played back at the same rate they were captured.
     /// This range includes events sent at the start of the range, but not the end.
+    /// There will always be one frame between the end of the previous loop and the start of the next.
     TimeRangeLoop(Duration, Duration),
     /// Plays events between the first and second [`FrameCount`] once.
     ///
@@ -72,6 +73,7 @@ pub enum PlaybackStrategy {
     ///
     /// The events are played back at the same rate they were captured.
     /// This range includes events sent at the start of the range, but not the end.
+    /// There will always be one frame between the end of the previous loop and the start of the next.
     FrameRangeLoop(FrameCount, FrameCount),
     /// Does not playback any events.
     ///
