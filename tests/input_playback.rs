@@ -92,7 +92,13 @@ fn capture_and_playback() {
     app.update();
 
     let input = app.world.resource::<Input<KeyCode>>();
-    assert!(!input.pressed(KeyCode::F));
+    // Input is pressed because we just sent a real event
+    assert!(input.pressed(TEST_PRESS.key_code.unwrap()));
+
+    app.update();
+    let input = app.world.resource::<Input<KeyCode>>();
+    // Input is not pressed, as playback is not enabled and the previous event expired
+    assert!(input.pressed(TEST_PRESS.key_code.unwrap()));
 
     app.insert_resource(InputModesCaptured::DISABLE_ALL);
     app.insert_resource(PlaybackStrategy::FrameCount);
@@ -100,7 +106,8 @@ fn capture_and_playback() {
     app.update();
 
     let input = app.world.resource::<Input<KeyCode>>();
-    assert!(input.pressed(KeyCode::F));
+    // Input is now pressed, as the pressed key has been played back.
+    assert!(input.pressed(TEST_PRESS.key_code.unwrap()));
 }
 
 #[test]
