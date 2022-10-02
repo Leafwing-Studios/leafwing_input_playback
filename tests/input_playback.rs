@@ -59,7 +59,10 @@ fn complex_unified_input() -> UnifiedInput {
 
 #[test]
 fn minimal_playback() {
-    let mut app = playback_app(PlaybackStrategy::default());
+    let mut app = playback_app(PlaybackStrategy::FrameCount);
+    let input_events = app.world.resource::<Events<KeyboardInput>>();
+    assert_eq!(input_events.len(), 0);
+
     *app.world.resource_mut::<UnifiedInput>() = simple_unified_input();
     app.update();
 

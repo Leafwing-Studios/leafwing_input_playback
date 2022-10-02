@@ -108,7 +108,7 @@ impl UnifiedInput {
         rest
     }
 
-    /// Returns an iterator over all recorded events until the provided `frame` is reached, beginning at the current `cursor`.
+    /// Returns an iterator over all recorded events up to and including the provided `frame` is reached, beginning at the current `cursor`.
     ///
     /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
     #[must_use]
@@ -119,7 +119,7 @@ impl UnifiedInput {
         debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
         while self.cursor < self.events.len()
-            && self.events[self.cursor].time_since_startup < time_since_startup
+            && self.events[self.cursor].time_since_startup <= time_since_startup
         {
             result.push(self.events[self.cursor].clone());
             self.cursor += 1;
@@ -127,7 +127,7 @@ impl UnifiedInput {
         result
     }
 
-    /// Returns an iterator over all recorded events until the provided `time_since_startup`, beginning at the current `cursor`
+    /// Returns an iterator over all recorded events up to and including the provided `time_since_startup`, beginning at the current `cursor`
     ///
     /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::FrameCount`].
     #[must_use]
@@ -138,7 +138,7 @@ impl UnifiedInput {
         debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
         while self.cursor < self.events.len()
-            && self.events[self.cursor].frame < frame
+            && self.events[self.cursor].frame <= frame
             && self.cursor < self.events.len()
         {
             result.push(self.events[self.cursor].clone());
@@ -148,7 +148,7 @@ impl UnifiedInput {
     }
 
     /// Returns an iterator over recorded events starting from (inclusive) the start time,
-    /// and until (exclusive) the end time. Note that this can re-read events:
+    /// and until (inclusive) the end time. Note that this can re-read events:
     /// the cursor is reset before searching for the start of the range.
     ///
     /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
@@ -163,7 +163,7 @@ impl UnifiedInput {
         let mut cursor = 0;
         while self.cursor < self.events.len()
             && start_time_since_startup <= self.events[cursor].time_since_startup
-            && self.events[cursor].time_since_startup < end_time_since_startup
+            && self.events[cursor].time_since_startup <= end_time_since_startup
         {
             result.push(self.events[cursor].clone());
             cursor += 1;
@@ -173,7 +173,7 @@ impl UnifiedInput {
     }
 
     /// Returns an iterator over recorded events starting from (inclusive) the start frame,
-    /// and until (exclusive) the end frame. Note that this can re-read events:
+    /// and until (inclusive) the end frame. Note that this can re-read events:
     /// the cursor is reset before searching for the start of the range.
     ///
     /// This method should only be used on [`UnifiedInput`] resources that are sorted by [`SortingStrategy::TimeSinceStartup`].
@@ -188,7 +188,7 @@ impl UnifiedInput {
         let mut cursor = 0;
         while self.cursor < self.events.len()
             && start_frame <= self.events[cursor].frame
-            && self.events[cursor].frame < end_frame
+            && self.events[cursor].frame <= end_frame
         {
             result.push(self.events[cursor].clone());
             cursor += 1;
