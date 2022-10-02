@@ -1,3 +1,5 @@
+// BLOCKED: add time strategy tests: https://github.com/bevyengine/bevy/issues/6146
+
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
 use bevy::input::InputPlugin;
@@ -128,13 +130,49 @@ fn playback_strategy_paused() {
 }
 
 #[test]
-fn playback_strategy_frame() {}
+fn playback_strategy_frame() {
+    let mut app = playback_app(PlaybackStrategy::FrameCount);
+    *app.world.resource_mut::<UnifiedInput>() = complex_unified_input();
+
+    let unified_input = app.world.resource::<UnifiedInput>();
+    assert_eq!(unified_input.cursor, 0);
+
+    // Check complex_unified_input to verify the pattern
+    app.update();
+    let unified_input = app.world.resource::<UnifiedInput>();
+    assert_eq!(unified_input.cursor, 2);
+
+    app.update();
+    let unified_input = app.world.resource::<UnifiedInput>();
+    assert_eq!(unified_input.cursor, 4);
+
+    app.update();
+    let unified_input = app.world.resource::<UnifiedInput>();
+    assert_eq!(unified_input.cursor, 5);
+}
 
 #[test]
-fn playback_strategy_frame_slice() {}
+fn playback_strategy_frame_slice() {
+    let mut app = playback_app(PlaybackStrategy::FrameRange(FrameCount(1), FrameCount(2)));
+    *app.world.resource_mut::<UnifiedInput>() = complex_unified_input();
 
-#[test]
-fn playback_strategy_time() {}
+    let unified_input = app.world.resource::<UnifiedInput>();
+    assert_eq!(unified_input.cursor, 0);
 
-#[test]
-fn playback_strategy_time_slice() {}
+    // Replays the events betweeen frame 1 and 2 (inclusive)
+    app.update();
+    let input_events = app.world.resource::<Events<KeyboardInput>>();
+    // Check complex_unified_input to verify this value
+    assert_eq!(input_events.len(), 3);
+
+    // This playback strategy continues to replay the events each frame
+    app.update();
+    let input_events = app.world.resource::<Events<KeyboardInput>>();
+    // Events are double-buffered
+    assert_eq!(input_events.len(), 6);
+
+    app.update();
+    let input_events = app.world.resource::<Events<KeyboardInput>>();
+    // The same events keep getting sent
+    assert_eq!(input_events.len(), 6);
+}

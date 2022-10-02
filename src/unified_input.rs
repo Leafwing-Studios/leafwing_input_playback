@@ -155,17 +155,17 @@ impl UnifiedInput {
     #[must_use]
     pub fn iter_between_times(
         &mut self,
-        start_time_since_startup: Duration,
-        end_time_since_startup: Duration,
+        start_time: Duration,
+        end_time: Duration,
     ) -> impl IntoIterator<Item = TimestampedInputEvent> {
         debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
         let mut result = Vec::with_capacity(self.events.len() - self.cursor);
         let mut cursor = 0;
-        while self.cursor < self.events.len()
-            && start_time_since_startup <= self.events[cursor].time_since_startup
-            && self.events[cursor].time_since_startup <= end_time_since_startup
+        while self.cursor < self.events.len() && self.events[cursor].time_since_startup <= end_time
         {
-            result.push(self.events[cursor].clone());
+            if self.events[cursor].time_since_startup >= start_time {
+                result.push(self.events[cursor].clone());
+            }
             cursor += 1;
         }
         self.cursor = cursor;
@@ -183,14 +183,13 @@ impl UnifiedInput {
         start_frame: FrameCount,
         end_frame: FrameCount,
     ) -> impl IntoIterator<Item = TimestampedInputEvent> {
-        debug_assert!(self.is_sorted(SortingStrategy::TimeSinceStartup));
+        debug_assert!(self.is_sorted(SortingStrategy::FrameCount));
         let mut result = Vec::with_capacity(self.events.len());
         let mut cursor = 0;
-        while self.cursor < self.events.len()
-            && start_frame <= self.events[cursor].frame
-            && self.events[cursor].frame <= end_frame
-        {
-            result.push(self.events[cursor].clone());
+        while self.cursor < self.events.len() && self.events[cursor].frame <= end_frame {
+            if self.events[cursor].frame >= start_frame {
+                result.push(self.events[cursor].clone());
+            }
             cursor += 1;
         }
         self.cursor = cursor;
