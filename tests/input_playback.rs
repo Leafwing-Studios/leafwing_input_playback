@@ -114,6 +114,33 @@ fn capture_and_playback() {
 }
 
 #[test]
+fn repeated_playback() {
+    // Play all of the events each pass
+    let mut app = playback_app(PlaybackStrategy::default());
+    let input_events = app.world.resource::<Events<KeyboardInput>>();
+    assert_eq!(input_events.len(), 0);
+
+    *app.world.resource_mut::<UnifiedInput>() = simple_unified_input();
+    for _ in 1..10 {
+        app.update();
+    }
+
+    // Verify that we're out of events
+    let input_events = app.world.resource::<Events<KeyboardInput>>();
+    assert_eq!(input_events.len(), 0);
+
+    // Reset our tracking
+    let mut unified_input: Mut<UnifiedInput> = app.world.resource_mut();
+    unified_input.reset_cursor();
+
+    // Play the events again
+    app.update();
+
+    let input_events = app.world.resource::<Events<KeyboardInput>>();
+    assert_eq!(input_events.len(), 2);
+}
+
+#[test]
 fn playback_strategy_paused() {
     let mut app = playback_app(PlaybackStrategy::Paused);
     *app.world.resource_mut::<UnifiedInput>() = complex_unified_input();
