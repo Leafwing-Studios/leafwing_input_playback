@@ -72,6 +72,12 @@ impl UnifiedInput {
         }
     }
 
+    /// Resets the `cursor` to the beginning of the list, which tracks which events have been seen
+    #[inline]
+    pub fn reset_cursor(&mut self) {
+        self.cursor = 0;
+    }
+
     /// Gets the total length of the event stream
     pub fn len(&self) -> usize {
         self.events.len()
@@ -103,7 +109,7 @@ impl UnifiedInput {
     /// Returns an iterator over all recorded events, beginning at the current `cursor`.
     #[must_use]
     pub fn iter_rest(&mut self) -> impl IntoIterator<Item = TimestampedInputEvent> {
-        let rest = self.events.split_off(self.cursor);
+        let rest = self.events.clone().split_off(self.cursor);
         self.cursor = self.events.len();
         rest
     }
@@ -423,6 +429,38 @@ mod tests {
 
         // assert_eq!(unified_input.last_input(), Some(LEFT_CLICK_PRESS));
         // assert_eq!(unified_input.current_input(), Some(LEFT_CLICK_RELEASE));
+    }
+
+    /// Tests to verify that none of the iteration methods consume events
+    #[test]
+    fn repeated_iteration() {
+        let mut unified_input = complex_unified_input();
+        let iter = unified_input.iter_all();
+        assert_eq!(iter.into_iter().count(), 5);
+
+        unified_input.reset_cursor();
+        let iter = unified_input.iter_rest();
+        assert_eq!(iter.into_iter().count(), 5);
+
+        unified_input.reset_cursor();
+        let iter = unified_input.iter_until_frame(FrameCount(10));
+        assert_eq!(iter.into_iter().count(), 5);
+
+        unified_input.reset_cursor();
+        let iter = unified_input.iter_until_time(Duration::from_secs(10));
+        assert_eq!(iter.into_iter().count(), 5);
+
+        unified_input.reset_cursor();
+        let iter = unified_input.iter_between_frames(FrameCount(1), FrameCount(3));
+        assert_eq!(iter.into_iter().count(), 3);
+
+        unified_input.reset_cursor();
+        let iter = unified_input.iter_between_times(Duration::from_secs(0), Duration::from_secs(3));
+        assert_eq!(iter.into_iter().count(), 3);
+
+        unified_input.reset_cursor();
+        let iter = unified_input.iter_all();
+        assert_eq!(iter.into_iter().count(), 5);
     }
 
     #[test]

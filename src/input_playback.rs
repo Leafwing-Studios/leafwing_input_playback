@@ -242,7 +242,7 @@ impl PlaybackProgress {
     ///
     /// This is called when the current pass of the playback loop elapses.
     pub fn reset(&mut self, unified_input: &mut UnifiedInput) {
-        unified_input.cursor = 0;
+        unified_input.reset_cursor();
         *self = Self::default();
     }
 }
