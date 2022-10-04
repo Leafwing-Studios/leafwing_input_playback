@@ -2,7 +2,7 @@
 //!
 //! These are unified into a single [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource, which can be played back.
 
-use bevy::app::{App, CoreStage, Plugin};
+use bevy::app::{App, AppExit, CoreStage, Plugin};
 use bevy::ecs::prelude::*;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{MouseButtonInput, MouseWheel};
@@ -42,7 +42,7 @@ impl Plugin for InputCapturePlugin {
             )
             .add_system_to_stage(
                 CoreStage::Last,
-                serialize_captured_input.after(capture_input),
+                serialize_captured_input_on_exit.after(capture_input),
             );
     }
 }
@@ -131,20 +131,34 @@ pub fn capture_input(
 }
 
 /// Serializes captured input to the path given in the [`PlaybackFilePath`] resource.
-pub fn serialize_captured_input(
+///
+/// This data is only serialized once when [`AppExit`] is sent.
+/// Use the [`serialized_timestamped_inputs`] function directly if you want to implement custom checkpointing strategies.
+pub fn serialize_captured_input_on_exit(
+    app_exit_events: EventReader<AppExit>,
     playback_file: Res<PlaybackFilePath>,
-    captured_input: Res<TimestampedInputs>,
+    captured_inputs: Res<TimestampedInputs>,
+) {
+    if !app_exit_events.is_empty() {
+        serialize_timestamped_inputs(&*captured_inputs, &*playback_file);
+    }
+}
+
+/// Writes the `timestamped_inputs` to the provided `path` (which should store [`Some(PathBuf)`]).
+pub fn serialize_timestamped_inputs(
+    timestamped_inputs: &TimestampedInputs,
+    playback_file: &PlaybackFilePath,
 ) {
     if let Some(file_path) = playback_file.path() {
         let mut file = OpenOptions::new()
             .create(true)
-            .append(true)
+            .write(true)
             .open(file_path)
             .expect("Could not open file.");
         write!(
             file,
             "{}",
-            ron::ser::to_string_pretty(&*captured_input, PrettyConfig::default())
+            ron::ser::to_string_pretty(timestamped_inputs, PrettyConfig::default())
                 .expect("Could not convert captured input to a string.")
         )
         .expect("Could not write string to file.");
