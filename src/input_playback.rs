@@ -98,6 +98,7 @@ pub struct InputWriters<'w, 's> {
     pub mouse_wheel: EventWriter<'w, 's, MouseWheel>,
     pub cursor_moved: EventWriter<'w, 's, CursorMoved>,
     pub windows: ResMut<'w, Windows>,
+    pub app_exit: EventWriter<'w, 's, AppExit>,
 }
 
 // `TimestampedInputs` is an iterator, so we need mutable access to be able to track which events we've seen
@@ -201,6 +202,7 @@ fn send_playback_events(
 
                 input_writers.cursor_moved.send(e)
             }
+            AppExit => input_writers.app_exit.send_default(),
         };
     }
 }

@@ -360,6 +360,7 @@ pub enum InputEvent {
     MouseButton(MouseButtonInput),
     MouseWheel(MouseWheel),
     CursorMoved(CursorMoved),
+    AppExit,
 }
 
 impl From<KeyboardInput> for InputEvent {
@@ -383,6 +384,12 @@ impl From<MouseWheel> for InputEvent {
 impl From<CursorMoved> for InputEvent {
     fn from(event: CursorMoved) -> Self {
         InputEvent::CursorMoved(event)
+    }
+}
+
+impl From<AppExit> for InputEvent {
+    fn from(_event: AppExit) -> Self {
+        InputEvent::AppExit
     }
 }
 

@@ -91,6 +91,7 @@ pub fn capture_input(
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut cursor_moved_events: EventReader<CursorMoved>,
     mut keyboard_events: EventReader<KeyboardInput>,
+    mut app_exit_events: EventReader<AppExit>,
     mut timestamped_input: ResMut<TimestampedInputs>,
     input_modes_captured: Res<InputModesCaptured>,
     frame_count: Res<FrameCount>,
@@ -128,6 +129,8 @@ pub fn capture_input(
     if input_modes_captured.keyboard {
         timestamped_input.send_multiple(frame, time_since_startup, keyboard_events.iter().cloned());
     }
+
+    timestamped_input.send_multiple(frame, time_since_startup, app_exit_events.iter().cloned())
 }
 
 /// Serializes captured input to the path given in the [`PlaybackFilePath`] resource.
