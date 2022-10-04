@@ -2,6 +2,7 @@
 //! These are first unified into a [`InputEvent`] enum, then timestamped to create a [`TimestampedInputEvent`].
 //! Those timestamped events are finally stored inside of a [`TimestampedInputs`] resource, which should be used for input capture and playback.
 
+use bevy::app::AppExit;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{MouseButtonInput, MouseWheel};
 use bevy::utils::Duration;
@@ -13,8 +14,7 @@ use crate::frame_counting::FrameCount;
 /// A timestamped device-agnostic user-input event
 ///
 /// These are re-emitted as events, and commonly serialized to disk
-// BLOCKED: should be PartialEq, but https://github.com/bevyengine/bevy/issues/6024
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TimestampedInputEvent {
     /// The number of frames that have elapsed since the app began
     pub frame: FrameCount,
@@ -27,8 +27,7 @@ pub struct TimestampedInputEvent {
 /// A resource that stores the complete event-like list of [`TimestampedInputs`]
 ///
 /// Read and write to this struct when performing input capture and playback
-// BLOCKED: should be PartialEq, but https://github.com/bevyengine/bevy/issues/6024
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct TimestampedInputs {
     /// The underlying [`TimestampedInputEvent`] data
     ///
@@ -354,12 +353,13 @@ pub enum SortingStrategy {
 /// Collects input-relevant events for use in [`TimestampedInputs`]
 // BLOCKED: this should be PartialEq, but we're blocked on https://github.com/bevyengine/bevy/issues/6024
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum InputEvent {
     Keyboard(KeyboardInput),
     MouseButton(MouseButtonInput),
     MouseWheel(MouseWheel),
     CursorMoved(CursorMoved),
+    AppExit,
 }
 
 impl From<KeyboardInput> for InputEvent {
@@ -383,6 +383,12 @@ impl From<MouseWheel> for InputEvent {
 impl From<CursorMoved> for InputEvent {
     fn from(event: CursorMoved) -> Self {
         InputEvent::CursorMoved(event)
+    }
+}
+
+impl From<AppExit> for InputEvent {
+    fn from(_event: AppExit) -> Self {
+        InputEvent::AppExit
     }
 }
 
