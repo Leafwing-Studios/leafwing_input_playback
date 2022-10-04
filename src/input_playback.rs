@@ -8,9 +8,10 @@ use bevy_input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
 };
+use bevy_log::warn;
 use bevy_time::Time;
 use bevy_utils::Duration;
-use bevy_window::CursorMoved;
+use bevy_window::{CursorMoved, Windows};
 
 use crate::frame_counting::{frame_counter, FrameCount};
 use crate::timestamped_input::{TimestampedInputEvent, TimestampedInputs};
@@ -89,6 +90,7 @@ pub struct InputWriters<'w, 's> {
     pub mouse_button_input: EventWriter<'w, 's, MouseButtonInput>,
     pub mouse_wheel: EventWriter<'w, 's, MouseWheel>,
     pub cursor_moved: EventWriter<'w, 's, CursorMoved>,
+    pub windows: ResMut<'w, Windows>,
 }
 
 // `TimestampedInputs` is an iterator, so we need mutable access to be able to track which events we've seen
@@ -175,14 +177,23 @@ fn send_playback_events(
     timestamped_input_events: impl IntoIterator<Item = TimestampedInputEvent>,
     input_writers: &mut InputWriters,
 ) {
-    // We must be caeful not to consume these values
     for timestamped_input_event in timestamped_input_events {
         use crate::timestamped_input::InputEvent::*;
         match timestamped_input_event.input_event {
             Keyboard(e) => input_writers.keyboard_input.send(e),
             MouseButton(e) => input_writers.mouse_button_input.send(e),
             MouseWheel(e) => input_writers.mouse_wheel.send(e),
-            CursorMoved(e) => input_writers.cursor_moved.send(e),
+            // Window events MUST update the `Window` struct itself
+            // BLOCKED: https://github.com/bevyengine/bevy/issues/6163
+            CursorMoved(e) => {
+                if let Some(window) = input_writers.windows.get_mut(e.id) {
+                    window.set_cursor_position(e.position);
+                } else {
+                    warn!("Window ID was not found when attempting to play back {e:?}")
+                }
+
+                input_writers.cursor_moved.send(e)
+            }
         };
     }
 }
