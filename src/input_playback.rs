@@ -211,7 +211,7 @@ pub fn deserialize_timestamped_inputs(
     playback_path: Res<PlaybackFilePath>,
 ) {
     if let Some(file_path) = playback_path.path() {
-        let file = File::open(&file_path).unwrap();
+        let file = File::open(file_path).unwrap();
         *timestamped_inputs = from_reader(file).unwrap();
     }
 }

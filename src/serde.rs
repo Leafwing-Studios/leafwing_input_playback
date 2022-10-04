@@ -4,7 +4,7 @@ use std::path::PathBuf;
 /// The file path where captured events will be saved to and read from.
 ///
 /// Currently, only `.ron` serialization / deserialization is supported.
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct PlaybackFilePath {
     /// The stored [`PathBuf`].
     ///
@@ -43,6 +43,6 @@ impl PlaybackFilePath {
             assert_eq!(actual_path.extension().unwrap(), "ron");
         }
 
-        self.path = path.clone();
+        self.path = path;
     }
 }

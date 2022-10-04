@@ -140,7 +140,7 @@ pub fn serialize_captured_input_on_exit(
     captured_inputs: Res<TimestampedInputs>,
 ) {
     if !app_exit_events.is_empty() {
-        serialize_timestamped_inputs(&*captured_inputs, &*playback_file);
+        serialize_timestamped_inputs(&captured_inputs, &playback_file);
     }
 }
 
