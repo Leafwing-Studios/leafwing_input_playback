@@ -10,6 +10,7 @@ use bevy::time::Time;
 use bevy::window::CursorMoved;
 
 use crate::frame_counting::{frame_counter, FrameCount};
+use crate::serde::PlaybackFilePath;
 use crate::timestamped_input::TimestampedInputs;
 
 /// Captures user inputs from the assorted raw `Event` types
@@ -28,6 +29,7 @@ impl Plugin for InputCapturePlugin {
 
         app.init_resource::<TimestampedInputs>()
             .init_resource::<InputModesCaptured>()
+            .init_resource::<PlaybackFilePath>()
             .add_system_to_stage(
                 // Capture any mocked input as well
                 CoreStage::Last,

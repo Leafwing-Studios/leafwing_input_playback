@@ -14,6 +14,7 @@ use bevy::utils::Duration;
 use bevy::window::{CursorMoved, Windows};
 
 use crate::frame_counting::{frame_counter, FrameCount};
+use crate::serde::PlaybackFilePath;
 use crate::timestamped_input::{TimestampedInputEvent, TimestampedInputs};
 
 /// Reads from the [`TimestampedInputs`] event stream to determine which events to play back.
@@ -33,6 +34,7 @@ impl Plugin for InputPlaybackPlugin {
         app.init_resource::<TimestampedInputs>()
             .init_resource::<PlaybackProgress>()
             .init_resource::<PlaybackStrategy>()
+            .init_resource::<PlaybackFilePath>()
             .add_system_to_stage(
                 CoreStage::First,
                 playback_timestamped_input.after(frame_counter),
