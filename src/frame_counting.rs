@@ -1,6 +1,6 @@
 //! Counts (and updates) the frame of the app
 
-use bevy_ecs::prelude::*;
+use bevy::ecs::prelude::*;
 use std::ops::{Add, Sub};
 /// The number of frames that have elapsed since the app started
 ///

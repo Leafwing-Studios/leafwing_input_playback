@@ -1,11 +1,11 @@
-//! Unifies (and time-stamp) various `bevy_input` and `bevy_window` input events.
+//! Unifies (and time-stamp) various `bevy::input` and `bevy::window` input events.
 //! These are first unified into a [`InputEvent`] enum, then timestamped to create a [`TimestampedInputEvent`].
 //! Those timestamped events are finally stored inside of a [`TimestampedInputs`] resource, which should be used for input capture and playback.
 
-use bevy_input::keyboard::KeyboardInput;
-use bevy_input::mouse::{MouseButtonInput, MouseWheel};
-use bevy_utils::Duration;
-use bevy_window::CursorMoved;
+use bevy::input::keyboard::KeyboardInput;
+use bevy::input::mouse::{MouseButtonInput, MouseWheel};
+use bevy::utils::Duration;
+use bevy::window::CursorMoved;
 
 use crate::frame_counting::FrameCount;
 
@@ -388,8 +388,8 @@ impl From<CursorMoved> for InputEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bevy_input::mouse::MouseButton;
-    use bevy_input::ButtonState;
+    use bevy::input::mouse::MouseButton;
+    use bevy::input::ButtonState;
 
     const LEFT_CLICK_PRESS: InputEvent = InputEvent::MouseButton(MouseButtonInput {
         button: MouseButton::Left,

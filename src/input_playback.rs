@@ -2,9 +2,9 @@
 //!
 //! These are played back by emulating assorted Bevy input events.
 
-use bevy_app::{App, CoreStage, Plugin};
-use bevy_ecs::{prelude::*, system::SystemParam};
-use bevy_input::{
+use bevy::app::{App, CoreStage, Plugin};
+use bevy::ecs::{prelude::*, system::SystemParam};
+use bevy::input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
 };

@@ -1,13 +1,13 @@
-//! Captures user input from assorted raw [`Event`](bevy_ecs::event::Event) types.
+//! Captures user input from assorted raw [`Event`](bevy::ecs::event::Event) types.
 //!
 //! These are unified into a single [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource, which can be played back.
 
-use bevy_app::{App, CoreStage, Plugin};
-use bevy_ecs::prelude::*;
-use bevy_input::keyboard::KeyboardInput;
-use bevy_input::mouse::{MouseButtonInput, MouseWheel};
-use bevy_time::Time;
-use bevy_window::CursorMoved;
+use bevy::app::{App, CoreStage, Plugin};
+use bevy::ecs::prelude::*;
+use bevy::input::keyboard::KeyboardInput;
+use bevy::input::mouse::{MouseButtonInput, MouseWheel};
+use bevy::time::Time;
+use bevy::window::CursorMoved;
 
 use crate::frame_counting::{frame_counter, FrameCount};
 use crate::timestamped_input::TimestampedInputs;
@@ -71,7 +71,7 @@ impl Default for InputModesCaptured {
     }
 }
 
-/// Captures input from the [`bevy_window`] and [`bevy_input`] event streams.
+/// Captures input from the [`bevy::window`] and [`bevy::input`] event streams.
 ///
 /// The input modes can be controlled via the [`InputModesCaptured`] resource.
 #[allow(clippy::too_many_arguments)]

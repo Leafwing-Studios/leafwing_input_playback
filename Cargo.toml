@@ -21,15 +21,7 @@ members = ["./", "tools/ci"]
 default = []
 
 [dependencies]
-bevy_app = {version = "0.8", default-features = false}
-bevy_ecs = {version = "0.8", default-features = false}
-bevy_input = {version = "0.8", default-features = false, features = ["serialize"]}
-bevy_log = {version = "0.8", default_features = true}
-bevy_time = {version = "0.8", default-features = false}
-bevy_utils = {version = "0.8", default-features = false}
-bevy_window = {version = "0.8", default-features = false}
-
-
+bevy = {version = "0.8.1", default_features = false}
 serde = {version = "1.0", features = ["derive"]}
 
 [dev-dependencies]
