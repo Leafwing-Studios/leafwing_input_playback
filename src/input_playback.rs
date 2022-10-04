@@ -2,7 +2,7 @@
 //!
 //! These are played back by emulating assorted Bevy input events.
 
-use bevy::app::{App, CoreStage, Plugin};
+use bevy::app::{App, AppExit, CoreStage, Plugin};
 use bevy::ecs::{prelude::*, system::SystemParam};
 use bevy::input::{
     keyboard::KeyboardInput,

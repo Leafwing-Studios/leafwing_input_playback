@@ -2,6 +2,7 @@
 //! These are first unified into a [`InputEvent`] enum, then timestamped to create a [`TimestampedInputEvent`].
 //! Those timestamped events are finally stored inside of a [`TimestampedInputs`] resource, which should be used for input capture and playback.
 
+use bevy::app::AppExit;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{MouseButtonInput, MouseWheel};
 use bevy::utils::Duration;
