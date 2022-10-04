@@ -21,6 +21,8 @@ use crate::timestamped_input::{TimestampedInputEvent, TimestampedInputs};
 ///
 /// Events are played back during [`CoreStage::First`] to accurately mimic the behavior of native `winit`-based inputs.
 /// Which events are played back are controlled via the [`PlaybackStrategy`] resource.
+///  
+/// Input is deserialized from the path stored in the [`PlaybackFilePath`] resource, if any.
 pub struct InputPlaybackPlugin;
 
 impl Plugin for InputPlaybackPlugin {

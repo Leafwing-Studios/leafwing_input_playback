@@ -7,5 +7,6 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(InputPlaybackPlugin)
-        .insert_resource(PlaybackFilePath::new("./test_playback.ron"));
+        .insert_resource(PlaybackFilePath::new("./data/hello_world.ron"))
+        .run();
 }

@@ -8,15 +8,20 @@ use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{MouseButtonInput, MouseWheel};
 use bevy::time::Time;
 use bevy::window::CursorMoved;
+use ron::ser::PrettyConfig;
 
 use crate::frame_counting::{frame_counter, FrameCount};
 use crate::serde::PlaybackFilePath;
 use crate::timestamped_input::TimestampedInputs;
+use std::fs::OpenOptions;
+use std::io::Write;
 
 /// Captures user inputs from the assorted raw `Event` types
 ///
 /// These are collected into a [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource.
 /// Which input modes (mouse, keyboard, etc) are captured is controlled via the [`InputModesCaptured`] resource.
+///
+/// Input is serialized into the path stored in the [`PlaybackFilePath`] resource, if any.
 pub struct InputCapturePlugin;
 
 impl Plugin for InputCapturePlugin {
@@ -34,6 +39,10 @@ impl Plugin for InputCapturePlugin {
                 // Capture any mocked input as well
                 CoreStage::Last,
                 capture_input,
+            )
+            .add_system_to_stage(
+                CoreStage::Last,
+                serialize_captured_input.after(capture_input),
             );
     }
 }
@@ -118,5 +127,26 @@ pub fn capture_input(
 
     if input_modes_captured.keyboard {
         timestamped_input.send_multiple(frame, time_since_startup, keyboard_events.iter().cloned());
+    }
+}
+
+/// Serializes captured input to the path given in the [`PlaybackFilePath`] resource.
+pub fn serialize_captured_input(
+    playback_file: Res<PlaybackFilePath>,
+    captured_input: Res<TimestampedInputs>,
+) {
+    if let Some(file_path) = playback_file.path() {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(file_path)
+            .expect("Could not open file.");
+        write!(
+            file,
+            "{}",
+            ron::ser::to_string_pretty(&*captured_input, PrettyConfig::default())
+                .expect("Could not convert captured input to a string.")
+        )
+        .expect("Could not write string to file.");
     }
 }
