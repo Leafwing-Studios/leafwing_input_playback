@@ -1,0 +1,13 @@
+(
+    events: [
+        (
+            frame: (71),
+            time_since_startup: (
+                secs: 1,
+                nanos: 592977800,
+            ),
+            input_event: AppExit,
+        ),
+    ],
+    cursor: 0,
+)
