@@ -1,0 +1,269 @@
+(
+    events: [
+        (
+            frame: (116),
+            time_since_startup: (
+                secs: 2,
+                nanos: 380259200,
+            ),
+            input_event: Keyboard((
+                scan_code: 35,
+                key_code: Some(H),
+                state: Pressed,
+            )),
+        ),
+        (
+            frame: (120),
+            time_since_startup: (
+                secs: 2,
+                nanos: 446911200,
+            ),
+            input_event: Keyboard((
+                scan_code: 35,
+                key_code: Some(H),
+                state: Released,
+            )),
+        ),
+        (
+            frame: (177),
+            time_since_startup: (
+                secs: 3,
+                nanos: 396952300,
+            ),
+            input_event: Keyboard((
+                scan_code: 18,
+                key_code: Some(E),
+                state: Pressed,
+            )),
+        ),
+        (
+            frame: (180),
+            time_since_startup: (
+                secs: 3,
+                nanos: 446934100,
+            ),
+            input_event: Keyboard((
+                scan_code: 18,
+                key_code: Some(E),
+                state: Released,
+            )),
+        ),
+        (
+            frame: (220),
+            time_since_startup: (
+                secs: 4,
+                nanos: 113641400,
+            ),
+            input_event: Keyboard((
+                scan_code: 38,
+                key_code: Some(L),
+                state: Pressed,
+            )),
+        ),
+        (
+            frame: (224),
+            time_since_startup: (
+                secs: 4,
+                nanos: 180281900,
+            ),
+            input_event: Keyboard((
+                scan_code: 38,
+                key_code: Some(L),
+                state: Released,
+            )),
+        ),
+        (
+            frame: (249),
+            time_since_startup: (
+                secs: 4,
+                nanos: 596947200,
+            ),
+            input_event: Keyboard((
+                scan_code: 38,
+                key_code: Some(L),
+                state: Pressed,
+            )),
+        ),
+        (
+            frame: (255),
+            time_since_startup: (
+                secs: 4,
+                nanos: 697010200,
+            ),
+            input_event: Keyboard((
+                scan_code: 38,
+                key_code: Some(L),
+                state: Released,
+            )),
+        ),
+        (
+            frame: (285),
+            time_since_startup: (
+                secs: 5,
+                nanos: 197035600,
+            ),
+            input_event: Keyboard((
+                scan_code: 24,
+                key_code: Some(O),
+                state: Pressed,
+            )),
+        ),
+        (
+            frame: (290),
+            time_since_startup: (
+                secs: 5,
+                nanos: 280284800,
+            ),
+            input_event: Keyboard((
+                scan_code: 24,
+                key_code: Some(O),
+                state: Released,
+            )),
+        ),
+        (
+            frame: (316),
+            time_since_startup: (
+                secs: 5,
+                nanos: 713653300,
+            ),
+            input_event: Keyboard((
+                scan_code: 57,
+                key_code: Some(Space),
+                state: Pressed,
+            )),
+        ),
+        (
+            frame: (321),
+            time_since_startup: (
+                secs: 5,
+                nanos: 796981700,
+            ),
+            input_event: Keyboard((
+                scan_code: 57,
+                key_code: Some(Space),
+                state: Released,
+            )),
+        ),
+        (
+            frame: (346),
+            time_since_startup: (
+                secs: 6,
+                nanos: 213645600,
+            ),
+            input_event: Keyboard((
+                scan_code: 17,
+                key_code: Some(W),
+                state: Pressed,
+            )),
+        ),
+        (
+            frame: (349),
+            time_since_startup: (
+                secs: 6,
+                nanos: 263658900,
+            ),
+            input_event: Keyboard((
+                scan_code: 17,
+                key_code: Some(W),
+                state: Released,
+            )),
+        ),
+        (
+            frame: (365),
+            time_since_startup: (
+                secs: 6,
+                nanos: 530358800,
+            ),
+            input_event: Keyboard((
+                scan_code: 24,
+                key_code: Some(O),
+                state: Pressed,
+            )),
+        ),
+        (
+            frame: (369),
+            time_since_startup: (
+                secs: 6,
+                nanos: 597034800,
+            ),
+            input_event: Keyboard((
+                scan_code: 24,
+                key_code: Some(O),
+                state: Released,
+            )),
+        ),
+        (
+            frame: (380),
+            time_since_startup: (
+                secs: 6,
+                nanos: 780319600,
+            ),
+            input_event: Keyboard((
+                scan_code: 19,
+                key_code: Some(R),
+                state: Pressed,
+            )),
+        ),
+        (
+            frame: (384),
+            time_since_startup: (
+                secs: 6,
+                nanos: 847000600,
+            ),
+            input_event: Keyboard((
+                scan_code: 19,
+                key_code: Some(R),
+                state: Released,
+            )),
+        ),
+        (
+            frame: (404),
+            time_since_startup: (
+                secs: 7,
+                nanos: 180385800,
+            ),
+            input_event: Keyboard((
+                scan_code: 38,
+                key_code: Some(L),
+                state: Pressed,
+            )),
+        ),
+        (
+            frame: (410),
+            time_since_startup: (
+                secs: 7,
+                nanos: 280361100,
+            ),
+            input_event: Keyboard((
+                scan_code: 38,
+                key_code: Some(L),
+                state: Released,
+            )),
+        ),
+        (
+            frame: (413),
+            time_since_startup: (
+                secs: 7,
+                nanos: 330342400,
+            ),
+            input_event: Keyboard((
+                scan_code: 32,
+                key_code: Some(D),
+                state: Pressed,
+            )),
+        ),
+        (
+            frame: (418),
+            time_since_startup: (
+                secs: 7,
+                nanos: 413715800,
+            ),
+            input_event: Keyboard((
+                scan_code: 32,
+                key_code: Some(D),
+                state: Released,
+            )),
+        ),
+    ],
+    cursor: 0,
+)

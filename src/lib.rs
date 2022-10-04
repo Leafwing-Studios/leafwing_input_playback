@@ -6,4 +6,5 @@
 pub mod frame_counting;
 pub mod input_capture;
 pub mod input_playback;
+pub mod serde;
 pub mod timestamped_input;

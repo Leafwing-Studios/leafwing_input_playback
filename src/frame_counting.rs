@@ -1,11 +1,14 @@
 //! Counts (and updates) the frame of the app
 
-use bevy_ecs::prelude::*;
+use bevy::ecs::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::ops::{Add, Sub};
 /// The number of frames that have elapsed since the app started
 ///
 /// Updated in [`time_tracker`] during [`CoreStage::First`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub struct FrameCount(pub u64);
 
 impl Add<FrameCount> for FrameCount {

@@ -2,24 +2,29 @@
 //!
 //! These are played back by emulating assorted Bevy input events.
 
-use bevy_app::{App, CoreStage, Plugin};
-use bevy_ecs::{prelude::*, system::SystemParam};
-use bevy_input::{
+use bevy::app::{App, CoreStage, Plugin};
+use bevy::ecs::{prelude::*, system::SystemParam};
+use bevy::input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
 };
-use bevy_log::warn;
-use bevy_time::Time;
-use bevy_utils::Duration;
-use bevy_window::{CursorMoved, Windows};
+use bevy::log::warn;
+use bevy::time::Time;
+use bevy::utils::Duration;
+use bevy::window::{CursorMoved, Windows};
+use ron::de::from_reader;
+use std::fs::File;
 
 use crate::frame_counting::{frame_counter, FrameCount};
+use crate::serde::PlaybackFilePath;
 use crate::timestamped_input::{TimestampedInputEvent, TimestampedInputs};
 
 /// Reads from the [`TimestampedInputs`] event stream to determine which events to play back.
 ///
 /// Events are played back during [`CoreStage::First`] to accurately mimic the behavior of native `winit`-based inputs.
 /// Which events are played back are controlled via the [`PlaybackStrategy`] resource.
+///  
+/// Input is deserialized on app startup from the path stored in the [`PlaybackFilePath`] resource, if any.
 pub struct InputPlaybackPlugin;
 
 impl Plugin for InputPlaybackPlugin {
@@ -33,6 +38,8 @@ impl Plugin for InputPlaybackPlugin {
         app.init_resource::<TimestampedInputs>()
             .init_resource::<PlaybackProgress>()
             .init_resource::<PlaybackStrategy>()
+            .init_resource::<PlaybackFilePath>()
+            .add_startup_system(deserialize_timestamped_inputs)
             .add_system_to_stage(
                 CoreStage::First,
                 playback_timestamped_input.after(frame_counter),
@@ -195,6 +202,17 @@ fn send_playback_events(
                 input_writers.cursor_moved.send(e)
             }
         };
+    }
+}
+
+/// Reads the stored file paths from the [`PlaybackFilePath`] location (if any)
+pub fn deserialize_timestamped_inputs(
+    mut timestamped_inputs: ResMut<TimestampedInputs>,
+    playback_path: Res<PlaybackFilePath>,
+) {
+    if let Some(file_path) = playback_path.path() {
+        let file = File::open(file_path).unwrap();
+        *timestamped_inputs = from_reader(file).unwrap();
     }
 }
 
