@@ -6,6 +6,7 @@ use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{MouseButtonInput, MouseWheel};
 use bevy::utils::Duration;
 use bevy::window::CursorMoved;
+use serde::{Deserialize, Serialize};
 
 use crate::frame_counting::FrameCount;
 
@@ -13,7 +14,7 @@ use crate::frame_counting::FrameCount;
 ///
 /// These are re-emitted as events, and commonly serialized to disk
 // BLOCKED: should be PartialEq, but https://github.com/bevyengine/bevy/issues/6024
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimestampedInputEvent {
     /// The number of frames that have elapsed since the app began
     pub frame: FrameCount,
@@ -27,7 +28,7 @@ pub struct TimestampedInputEvent {
 ///
 /// Read and write to this struct when performing input capture and playback
 // BLOCKED: should be PartialEq, but https://github.com/bevyengine/bevy/issues/6024
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TimestampedInputs {
     /// The underlying [`TimestampedInputEvent`] data
     ///
@@ -353,7 +354,7 @@ pub enum SortingStrategy {
 /// Collects input-relevant events for use in [`TimestampedInputs`]
 // BLOCKED: this should be PartialEq, but we're blocked on https://github.com/bevyengine/bevy/issues/6024
 #[allow(missing_docs)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InputEvent {
     Keyboard(KeyboardInput),
     MouseButton(MouseButtonInput),
