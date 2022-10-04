@@ -4,6 +4,7 @@
 
 use bevy::app::{App, AppExit, CoreStage, Plugin};
 use bevy::ecs::prelude::*;
+use bevy::input::gamepad::GamepadEventRaw;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{MouseButtonInput, MouseWheel};
 use bevy::time::Time;
@@ -56,8 +57,14 @@ pub struct InputModesCaptured {
     pub mouse_buttons: bool,
     /// Moving the mouse
     pub mouse_motion: bool,
-    /// Keyboard inputs (both keycodes and scancodes)
+    /// Keyboard inputs
+    ///
+    /// Captures both keycode and scan code data.
     pub keyboard: bool,
+    /// Gamepad inputs
+    ///
+    /// Captures gamepad connections, button presses and axis values
+    pub gamepad: bool,
 }
 
 impl InputModesCaptured {
@@ -66,6 +73,7 @@ impl InputModesCaptured {
         mouse_buttons: false,
         mouse_motion: false,
         keyboard: false,
+        gamepad: false,
     };
 
     /// Captures all supported input modes
@@ -73,6 +81,7 @@ impl InputModesCaptured {
         mouse_buttons: true,
         mouse_motion: true,
         keyboard: true,
+        gamepad: true,
     };
 }
 
@@ -91,6 +100,7 @@ pub fn capture_input(
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut cursor_moved_events: EventReader<CursorMoved>,
     mut keyboard_events: EventReader<KeyboardInput>,
+    mut gamepad_events: EventReader<GamepadEventRaw>,
     mut app_exit_events: EventReader<AppExit>,
     mut timestamped_input: ResMut<TimestampedInputs>,
     input_modes_captured: Res<InputModesCaptured>,
@@ -128,6 +138,10 @@ pub fn capture_input(
 
     if input_modes_captured.keyboard {
         timestamped_input.send_multiple(frame, time_since_startup, keyboard_events.iter().cloned());
+    }
+
+    if input_modes_captured.gamepad {
+        timestamped_input.send_multiple(frame, time_since_startup, gamepad_events.iter().cloned());
     }
 
     timestamped_input.send_multiple(frame, time_since_startup, app_exit_events.iter().cloned())

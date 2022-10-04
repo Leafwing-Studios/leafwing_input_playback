@@ -9,19 +9,72 @@ use bevy::prelude::*;
 use leafwing_input_playback::{
     input_capture::{InputCapturePlugin, InputModesCaptured},
     input_playback::{InputPlaybackPlugin, PlaybackStrategy},
+    timestamped_input::TimestampedInputs,
 };
 
 fn main() {
     use gamepad_viewer_example::*;
 
     App::new()
+        // This plugin contains all the code from the original example
         .add_plugin(GamepadViewerExample)
         .add_plugin(InputCapturePlugin)
         .add_plugin(InputPlaybackPlugin)
         // Disable all input capture and playback to start
         .insert_resource(InputModesCaptured::DISABLE_ALL)
         .insert_resource(PlaybackStrategy::Paused)
+        // Toggle between playback and capture using Space
+        .insert_resource(InputStrategy::Playback)
+        .add_system(toggle_capture_vs_playback)
         .run();
+}
+
+#[derive(PartialEq)]
+enum InputStrategy {
+    Capture,
+    Playback,
+}
+
+fn toggle_capture_vs_playback(
+    mut input_modes: ResMut<InputModesCaptured>,
+    mut playback_strategy: ResMut<PlaybackStrategy>,
+    keyboard_input: Res<Input<KeyCode>>,
+    mut timestamped_input: ResMut<TimestampedInputs>,
+    mut input_strategy: ResMut<InputStrategy>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        *input_strategy = match *input_strategy {
+            InputStrategy::Capture => {
+                // Disable input capture
+                *input_modes = InputModesCaptured::DISABLE_ALL;
+                // Enable input playback
+                *playback_strategy = if let Some((start, end)) =
+                    // Play back all recorded inputs at the same rate they were input
+                    timestamped_input.frame_range()
+                {
+                    PlaybackStrategy::FrameRangeOnce(start, end)
+                } else {
+                    // Do not play back events if none were recorded
+                    PlaybackStrategy::Paused
+                };
+
+                info!("Now playing back input.");
+                InputStrategy::Playback
+            }
+            InputStrategy::Playback => {
+                // Enable input capture
+                *input_modes = InputModesCaptured::ENABLE_ALL;
+                // Disable input playback
+                *playback_strategy = PlaybackStrategy::Paused;
+
+                // Reset all input data, starting a new recording
+                *timestamped_input = TimestampedInputs::default();
+
+                info!("Now capturing input.");
+                InputStrategy::Capture
+            }
+        };
+    }
 }
 
 mod gamepad_viewer_example {
