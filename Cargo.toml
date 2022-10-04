@@ -21,11 +21,11 @@ members = ["./", "tools/ci"]
 default = []
 
 [dependencies]
-bevy = {version = "0.8.1", default_features = false}
+bevy = {git = "https://github.com/alice-i-cecile/bevy?branch=0.8.1withInputSerde", default_features = false}
 serde = {version = "1.0", features = ["derive"]}
 
 [dev-dependencies]
-bevy = {version = "0.8", default-features = true}
+bevy = {git = "https://github.com/alice-i-cecile/bevy?branch=0.8.1withInputSerde", default-features = true}
 
 [lib]
 name = "leafwing_input_playback"
