@@ -40,6 +40,17 @@ fn capture_app() -> App {
 }
 
 #[test]
+fn app_update_sends_app_exit() {
+    let mut app = capture_app();
+
+    app.update();
+    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.len(), 1);
+    let timestamped_event = timestamped_input.events.first().unwrap();
+    assert_eq!(timestamped_event.input_event, InputEvent::AppExit);
+}
+
+#[test]
 fn capture_sent_events() {
     let mut app = capture_app();
 
@@ -49,7 +60,7 @@ fn capture_sent_events() {
 
     app.update();
     let timestamped_input = app.world.resource::<TimestampedInputs>();
-    assert_eq!(timestamped_input.len(), 2);
+    assert_eq!(timestamped_input.len(), 3);
 }
 
 #[test]
@@ -71,11 +82,13 @@ fn identity_of_sent_events() {
 
     let first_event: TimestampedInputEvent = iterator.next().unwrap();
     let second_event: TimestampedInputEvent = iterator.next().unwrap();
+    let third_event: TimestampedInputEvent = iterator.next().unwrap();
 
     // Unfortunately these input types don't impl PartialEq :(
     assert!(matches!(first_event.input_event, InputEvent::Keyboard(_)));
+    assert!(matches!(second_event.input_event, InputEvent::AppExit));
     assert!(matches!(
-        second_event.input_event,
+        third_event.input_event,
         InputEvent::MouseButton(_)
     ));
 }
@@ -98,11 +111,14 @@ fn framecount_of_sent_events() {
 
     let first_event: TimestampedInputEvent = iterator.next().unwrap();
     let second_event: TimestampedInputEvent = iterator.next().unwrap();
+    let third_event: TimestampedInputEvent = iterator.next().unwrap();
 
     // The frame count is recorded based on the frame it is read,
     // which counts up immediately
     assert_eq!(first_event.frame, FrameCount(1));
-    assert_eq!(second_event.frame, FrameCount(2));
+    // The app exit event
+    assert_eq!(second_event.frame, FrameCount(1));
+    assert_eq!(third_event.frame, FrameCount(2));
 }
 
 #[test]
@@ -117,7 +133,7 @@ fn toggle_input_capture() {
 
     // Inputs are captured while input capturing is enabled by default
     let timestamped_input = app.world.resource::<TimestampedInputs>();
-    assert_eq!(timestamped_input.len(), 2);
+    assert_eq!(timestamped_input.len(), 3);
 
     // Disabling input capture
     let mut input_modes_captured = app.world.resource_mut::<InputModesCaptured>();
@@ -130,8 +146,9 @@ fn toggle_input_capture() {
     app.update();
 
     // Inputs are not captured while input capturing is disabled
+    // Note that each app.update() always sends an `AppExit` event
     let timestamped_input = app.world.resource::<TimestampedInputs>();
-    assert_eq!(timestamped_input.len(), 2);
+    assert_eq!(timestamped_input.len(), 4);
 
     // Partially re-enabling input capture
     let mut input_modes_captured = app.world.resource_mut::<InputModesCaptured>();
@@ -149,7 +166,7 @@ fn toggle_input_capture() {
 
     app.update();
 
-    // Only the keyboard events were captured
+    // Only the keyboard events (and app exit events) were captured
     let timestamped_input = app.world.resource::<TimestampedInputs>();
-    assert_eq!(timestamped_input.len(), 3);
+    assert_eq!(timestamped_input.len(), 6);
 }
