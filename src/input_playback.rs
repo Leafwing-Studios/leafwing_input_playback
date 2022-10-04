@@ -4,6 +4,7 @@
 
 use bevy::app::{App, AppExit, CoreStage, Plugin};
 use bevy::ecs::{prelude::*, system::SystemParam};
+use bevy::input::gamepad::GamepadEventRaw;
 use bevy::input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
@@ -98,6 +99,7 @@ pub struct InputWriters<'w, 's> {
     pub mouse_wheel: EventWriter<'w, 's, MouseWheel>,
     pub cursor_moved: EventWriter<'w, 's, CursorMoved>,
     pub windows: ResMut<'w, Windows>,
+    pub gamepad: EventWriter<'w, 's, GamepadEventRaw>,
     pub app_exit: EventWriter<'w, 's, AppExit>,
 }
 
@@ -201,6 +203,9 @@ fn send_playback_events(
                 }
 
                 input_writers.cursor_moved.send(e)
+            }
+            Gamepad(e) => {
+                input_writers.gamepad.send(e);
             }
             AppExit => input_writers.app_exit.send_default(),
         };

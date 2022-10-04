@@ -3,6 +3,7 @@
 //! Those timestamped events are finally stored inside of a [`TimestampedInputs`] resource, which should be used for input capture and playback.
 
 use bevy::app::AppExit;
+use bevy::input::gamepad::GamepadEventRaw;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{MouseButtonInput, MouseWheel};
 use bevy::utils::Duration;
@@ -359,6 +360,7 @@ pub enum InputEvent {
     MouseButton(MouseButtonInput),
     MouseWheel(MouseWheel),
     CursorMoved(CursorMoved),
+    Gamepad(GamepadEventRaw),
     AppExit,
 }
 
@@ -383,6 +385,12 @@ impl From<MouseWheel> for InputEvent {
 impl From<CursorMoved> for InputEvent {
     fn from(event: CursorMoved) -> Self {
         InputEvent::CursorMoved(event)
+    }
+}
+
+impl From<GamepadEventRaw> for InputEvent {
+    fn from(event: GamepadEventRaw) -> Self {
+        InputEvent::Gamepad(event)
     }
 }
 
