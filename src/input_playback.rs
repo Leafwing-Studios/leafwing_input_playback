@@ -8,10 +8,10 @@ use bevy::input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
 };
-use bevy_log::warn;
-use bevy_time::Time;
-use bevy_utils::Duration;
-use bevy_window::{CursorMoved, Windows};
+use bevy::log::warn;
+use bevy::time::Time;
+use bevy::utils::Duration;
+use bevy::window::{CursorMoved, Windows};
 
 use crate::frame_counting::{frame_counter, FrameCount};
 use crate::timestamped_input::{TimestampedInputEvent, TimestampedInputs};
