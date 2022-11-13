@@ -51,7 +51,7 @@ impl Plugin for InputPlaybackPlugin {
 /// Controls the approach used for playing back recorded inputs
 ///
 /// [`PlaybackStrategy::Time`] is the default strategy.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PlaybackStrategy {
     /// Plays events up to (but not past) the current [`Time`].
     ///
@@ -118,7 +118,7 @@ pub fn playback_timestamped_input(
     // We cannot store the iterator, as different opaque return types are used
     match *playback_strategy {
         PlaybackStrategy::Time => {
-            let input_events = timestamped_input.iter_until_time(time.time_since_startup());
+            let input_events = timestamped_input.iter_until_time(time.elapsed());
             send_playback_events(input_events, &mut input_writers);
         }
         PlaybackStrategy::FrameCount => {
@@ -229,7 +229,7 @@ pub fn deserialize_timestamped_inputs(
 /// the offset between the actual time (frame count) and the time (frame count) of the recording.
 ///
 /// Used in the [`playback_timestamped_input`] system to track progress.
-#[derive(Default, Debug, PartialEq, Eq, Clone)]
+#[derive(Resource, Default, Debug, PartialEq, Eq, Clone)]
 pub struct PlaybackProgress {
     /// The [`Duration`] that this playback loop has been running for
     pub elapsed_time: Duration,

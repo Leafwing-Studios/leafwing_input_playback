@@ -1,10 +1,10 @@
 //! Serialization and deserialization of [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) data
+use bevy::ecs::prelude::Resource;
 use std::path::PathBuf;
-
 /// The file path where captured events will be saved to and read from.
 ///
 /// Currently, only `.ron` serialization / deserialization is supported.
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Resource, Clone, Debug, PartialEq, Eq, Default)]
 pub struct PlaybackFilePath {
     /// The stored [`PathBuf`].
     ///

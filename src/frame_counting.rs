@@ -7,7 +7,18 @@ use std::ops::{Add, Sub};
 ///
 /// Updated in [`time_tracker`] during [`CoreStage::First`].
 #[derive(
-    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+    Resource,
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
 )]
 pub struct FrameCount(pub u64);
 

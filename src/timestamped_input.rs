@@ -3,6 +3,7 @@
 //! Those timestamped events are finally stored inside of a [`TimestampedInputs`] resource, which should be used for input capture and playback.
 
 use bevy::app::AppExit;
+use bevy::ecs::prelude::*;
 use bevy::input::gamepad::GamepadEventRaw;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{MouseButtonInput, MouseWheel};
@@ -28,7 +29,7 @@ pub struct TimestampedInputEvent {
 /// A resource that stores the complete event-like list of [`TimestampedInputs`]
 ///
 /// Read and write to this struct when performing input capture and playback
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Resource, Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct TimestampedInputs {
     /// The underlying [`TimestampedInputEvent`] data
     ///

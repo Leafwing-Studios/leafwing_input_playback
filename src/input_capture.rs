@@ -51,7 +51,7 @@ impl Plugin for InputCapturePlugin {
 /// The input mechanisms captured via the [`InputCapturePlugin`], configured as a resource.
 ///
 /// By default, all supported input modes will be captured.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Resource, Debug, PartialEq, Eq, Clone)]
 pub struct InputModesCaptured {
     /// Mouse buttons and mouse wheel inputs
     pub mouse_buttons: bool,
@@ -107,7 +107,7 @@ pub fn capture_input(
     frame_count: Res<FrameCount>,
     time: Res<Time>,
 ) {
-    let time_since_startup = time.time_since_startup();
+    let time_since_startup = time.elapsed();
     let frame = *frame_count;
 
     // BLOCKED: these events are arbitrarily ordered within a frame,

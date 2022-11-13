@@ -29,7 +29,7 @@ fn main() {
         .run();
 }
 
-#[derive(PartialEq)]
+#[derive(Resource, PartialEq)]
 enum InputStrategy {
     Capture,
     Playback,
@@ -144,10 +144,12 @@ mod gamepad_viewer_example {
     #[derive(Component)]
     struct ConnectedGamepadsText;
 
+    #[derive(Resource)]
     struct ButtonMaterials {
         normal: Handle<ColorMaterial>,
         active: Handle<ColorMaterial>,
     }
+
     impl FromWorld for ButtonMaterials {
         fn from_world(world: &mut World) -> Self {
             let mut materials = world.resource_mut::<Assets<ColorMaterial>>();
@@ -157,12 +159,14 @@ mod gamepad_viewer_example {
             }
         }
     }
+    #[derive(Resource)]
     struct ButtonMeshes {
         circle: Mesh2dHandle,
         triangle: Mesh2dHandle,
         start_pause: Mesh2dHandle,
         trigger: Mesh2dHandle,
     }
+
     impl FromWorld for ButtonMeshes {
         fn from_world(world: &mut World) -> Self {
             let mut meshes = world.resource_mut::<Assets<Mesh>>();
@@ -176,7 +180,7 @@ mod gamepad_viewer_example {
             }
         }
     }
-    #[derive(Deref)]
+    #[derive(Resource, Deref)]
     struct FontHandle(Handle<Font>);
     impl FromWorld for FontHandle {
         fn from_world(world: &mut World) -> Self {
@@ -186,19 +190,18 @@ mod gamepad_viewer_example {
     }
 
     fn setup(mut commands: Commands, meshes: Res<ButtonMeshes>, materials: Res<ButtonMaterials>) {
-        commands.spawn_bundle(Camera2dBundle::default());
+        commands.spawn(Camera2dBundle::default());
 
         // Buttons
 
         commands
-            .spawn_bundle(SpatialBundle {
+            .spawn(SpatialBundle {
                 transform: Transform::from_xyz(BUTTONS_X, BUTTONS_Y, 0.),
                 ..default()
             })
             .with_children(|parent| {
                 parent
-                    .spawn()
-                    .insert_bundle(MaterialMesh2dBundle {
+                    .spawn(MaterialMesh2dBundle {
                         mesh: meshes.circle.clone(),
                         material: materials.normal.clone(),
                         transform: Transform::from_xyz(0., BUTTON_CLUSTER_RADIUS, 0.),
@@ -206,8 +209,7 @@ mod gamepad_viewer_example {
                     })
                     .insert(ReactTo(GamepadButtonType::North));
                 parent
-                    .spawn()
-                    .insert_bundle(MaterialMesh2dBundle {
+                    .spawn(MaterialMesh2dBundle {
                         mesh: meshes.circle.clone(),
                         material: materials.normal.clone(),
                         transform: Transform::from_xyz(0., -BUTTON_CLUSTER_RADIUS, 0.),
@@ -215,8 +217,7 @@ mod gamepad_viewer_example {
                     })
                     .insert(ReactTo(GamepadButtonType::South));
                 parent
-                    .spawn()
-                    .insert_bundle(MaterialMesh2dBundle {
+                    .spawn(MaterialMesh2dBundle {
                         mesh: meshes.circle.clone(),
                         material: materials.normal.clone(),
                         transform: Transform::from_xyz(-BUTTON_CLUSTER_RADIUS, 0., 0.),
@@ -224,8 +225,7 @@ mod gamepad_viewer_example {
                     })
                     .insert(ReactTo(GamepadButtonType::West));
                 parent
-                    .spawn()
-                    .insert_bundle(MaterialMesh2dBundle {
+                    .spawn(MaterialMesh2dBundle {
                         mesh: meshes.circle.clone(),
                         material: materials.normal.clone(),
                         transform: Transform::from_xyz(BUTTON_CLUSTER_RADIUS, 0., 0.),
@@ -238,8 +238,7 @@ mod gamepad_viewer_example {
         // Start and Pause
 
         commands
-            .spawn()
-            .insert_bundle(MaterialMesh2dBundle {
+            .spawn(MaterialMesh2dBundle {
                 mesh: meshes.start_pause.clone(),
                 material: materials.normal.clone(),
                 transform: Transform::from_xyz(-30., BUTTONS_Y, 0.),
@@ -248,8 +247,7 @@ mod gamepad_viewer_example {
             .insert(ReactTo(GamepadButtonType::Select));
 
         commands
-            .spawn()
-            .insert_bundle(MaterialMesh2dBundle {
+            .spawn(MaterialMesh2dBundle {
                 mesh: meshes.start_pause.clone(),
                 material: materials.normal.clone(),
                 transform: Transform::from_xyz(30., BUTTONS_Y, 0.),
@@ -260,15 +258,13 @@ mod gamepad_viewer_example {
         // D-Pad
 
         commands
-            .spawn()
-            .insert_bundle(SpatialBundle {
+            .spawn(SpatialBundle {
                 transform: Transform::from_xyz(-BUTTONS_X, BUTTONS_Y, 0.),
                 ..default()
             })
             .with_children(|parent| {
                 parent
-                    .spawn()
-                    .insert_bundle(MaterialMesh2dBundle {
+                    .spawn(MaterialMesh2dBundle {
                         mesh: meshes.triangle.clone(),
                         material: materials.normal.clone(),
                         transform: Transform::from_xyz(0., BUTTON_CLUSTER_RADIUS, 0.),
@@ -276,8 +272,7 @@ mod gamepad_viewer_example {
                     })
                     .insert(ReactTo(GamepadButtonType::DPadUp));
                 parent
-                    .spawn()
-                    .insert_bundle(MaterialMesh2dBundle {
+                    .spawn(MaterialMesh2dBundle {
                         mesh: meshes.triangle.clone(),
                         material: materials.normal.clone(),
                         transform: Transform::from_xyz(0., -BUTTON_CLUSTER_RADIUS, 0.)
@@ -286,8 +281,7 @@ mod gamepad_viewer_example {
                     })
                     .insert(ReactTo(GamepadButtonType::DPadDown));
                 parent
-                    .spawn()
-                    .insert_bundle(MaterialMesh2dBundle {
+                    .spawn(MaterialMesh2dBundle {
                         mesh: meshes.triangle.clone(),
                         material: materials.normal.clone(),
                         transform: Transform::from_xyz(-BUTTON_CLUSTER_RADIUS, 0., 0.)
@@ -296,8 +290,7 @@ mod gamepad_viewer_example {
                     })
                     .insert(ReactTo(GamepadButtonType::DPadLeft));
                 parent
-                    .spawn()
-                    .insert_bundle(MaterialMesh2dBundle {
+                    .spawn(MaterialMesh2dBundle {
                         mesh: meshes.triangle.clone(),
                         material: materials.normal.clone(),
                         transform: Transform::from_xyz(BUTTON_CLUSTER_RADIUS, 0., 0.)
@@ -310,8 +303,7 @@ mod gamepad_viewer_example {
         // Triggers
 
         commands
-            .spawn()
-            .insert_bundle(MaterialMesh2dBundle {
+            .spawn(MaterialMesh2dBundle {
                 mesh: meshes.trigger.clone(),
                 material: materials.normal.clone(),
                 transform: Transform::from_xyz(-BUTTONS_X, BUTTONS_Y + 115., 0.),
@@ -320,8 +312,7 @@ mod gamepad_viewer_example {
             .insert(ReactTo(GamepadButtonType::LeftTrigger));
 
         commands
-            .spawn()
-            .insert_bundle(MaterialMesh2dBundle {
+            .spawn(MaterialMesh2dBundle {
                 mesh: meshes.trigger.clone(),
                 material: materials.normal.clone(),
                 transform: Transform::from_xyz(BUTTONS_X, BUTTONS_Y + 115., 0.),
@@ -337,25 +328,29 @@ mod gamepad_viewer_example {
         gamepad_settings: Res<GamepadSettings>,
         font: Res<FontHandle>,
     ) {
-        let dead_upper = STICK_BOUNDS_SIZE * gamepad_settings.default_axis_settings.positive_low;
-        let dead_lower = STICK_BOUNDS_SIZE * gamepad_settings.default_axis_settings.negative_low;
+        let dead_upper =
+            STICK_BOUNDS_SIZE * gamepad_settings.default_axis_settings.deadzone_upperbound();
+        let dead_lower =
+            STICK_BOUNDS_SIZE * gamepad_settings.default_axis_settings.deadzone_lowerbound();
         let dead_size = dead_lower.abs() + dead_upper.abs();
         let dead_mid = (dead_lower + dead_upper) / 2.0;
 
-        let live_upper = STICK_BOUNDS_SIZE * gamepad_settings.default_axis_settings.positive_high;
-        let live_lower = STICK_BOUNDS_SIZE * gamepad_settings.default_axis_settings.negative_high;
+        let live_upper =
+            STICK_BOUNDS_SIZE * gamepad_settings.default_axis_settings.livezone_upperbound();
+        let live_lower =
+            STICK_BOUNDS_SIZE * gamepad_settings.default_axis_settings.livezone_lowerbound();
         let live_size = live_lower.abs() + live_upper.abs();
         let live_mid = (live_lower + live_upper) / 2.0;
 
         let mut spawn_stick = |x_pos, y_pos, x_axis, y_axis, button| {
             commands
-                .spawn_bundle(SpatialBundle {
+                .spawn(SpatialBundle {
                     transform: Transform::from_xyz(x_pos, y_pos, 0.),
                     ..default()
                 })
                 .with_children(|parent| {
                     // full extent
-                    parent.spawn_bundle(SpriteBundle {
+                    parent.spawn(SpriteBundle {
                         sprite: Sprite {
                             custom_size: Some(Vec2::splat(STICK_BOUNDS_SIZE * 2.)),
                             color: EXTENT_COLOR,
@@ -364,7 +359,7 @@ mod gamepad_viewer_example {
                         ..default()
                     });
                     // live zone
-                    parent.spawn_bundle(SpriteBundle {
+                    parent.spawn(SpriteBundle {
                         transform: Transform::from_xyz(live_mid, live_mid, 2.),
                         sprite: Sprite {
                             custom_size: Some(Vec2::new(live_size, live_size)),
@@ -374,7 +369,7 @@ mod gamepad_viewer_example {
                         ..default()
                     });
                     // dead zone
-                    parent.spawn_bundle(SpriteBundle {
+                    parent.spawn(SpriteBundle {
                         transform: Transform::from_xyz(dead_mid, dead_mid, 3.),
                         sprite: Sprite {
                             custom_size: Some(Vec2::new(dead_size, dead_size)),
@@ -390,8 +385,7 @@ mod gamepad_viewer_example {
                         font: font.clone(),
                     };
                     parent
-                        .spawn()
-                        .insert_bundle(Text2dBundle {
+                        .spawn(Text2dBundle {
                             transform: Transform::from_xyz(0., STICK_BOUNDS_SIZE + 2., 4.),
                             text: Text::from_sections([
                                 TextSection {
@@ -413,8 +407,7 @@ mod gamepad_viewer_example {
                         .insert(TextWithAxes { x_axis, y_axis });
                     // cursor
                     parent
-                        .spawn()
-                        .insert_bundle(MaterialMesh2dBundle {
+                        .spawn(MaterialMesh2dBundle {
                             mesh: meshes.circle.clone(),
                             material: materials.normal.clone(),
                             transform: Transform::from_xyz(0., 0., 5.)
@@ -454,8 +447,7 @@ mod gamepad_viewer_example {
     ) {
         let mut spawn_trigger = |x, y, button_type| {
             commands
-                .spawn()
-                .insert_bundle(MaterialMesh2dBundle {
+                .spawn(MaterialMesh2dBundle {
                     mesh: meshes.trigger.clone(),
                     material: materials.normal.clone(),
                     transform: Transform::from_xyz(x, y, 0.),
@@ -464,8 +456,7 @@ mod gamepad_viewer_example {
                 .insert(ReactTo(button_type))
                 .with_children(|parent| {
                     parent
-                        .spawn()
-                        .insert_bundle(Text2dBundle {
+                        .spawn(Text2dBundle {
                             transform: Transform::from_xyz(0., 0., 1.),
                             text: Text::from_section(
                                 format!("{:.3}", 0.),
@@ -501,8 +492,7 @@ mod gamepad_viewer_example {
             font: font.clone(),
         };
         commands
-            .spawn()
-            .insert_bundle(TextBundle::from_sections([
+            .spawn(TextBundle::from_sections([
                 TextSection {
                     value: "Connected Gamepads\n".to_string(),
                     style: style.clone(),
@@ -523,10 +513,10 @@ mod gamepad_viewer_example {
     ) {
         for gamepad in gamepads.iter() {
             for (mut handle, react_to) in query.iter_mut() {
-                if button_inputs.just_pressed(GamepadButton::new(*gamepad, **react_to)) {
+                if button_inputs.just_pressed(GamepadButton::new(gamepad, **react_to)) {
                     *handle = materials.active.clone();
                 }
-                if button_inputs.just_released(GamepadButton::new(*gamepad, **react_to)) {
+                if button_inputs.just_released(GamepadButton::new(gamepad, **react_to)) {
                     *handle = materials.normal.clone();
                 }
             }
