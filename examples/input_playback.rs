@@ -25,14 +25,14 @@ fn main() {
         .run()
 }
 
-#[derive(PartialEq)]
+#[derive(Resource, PartialEq)]
 enum InputStrategy {
     Capture,
     Playback,
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle::default());
 }
 
 pub fn cursor_pos_as_world_pos(
@@ -67,7 +67,7 @@ fn spawn_boxes(
         // Don't break if we leave the window
         if let Some(cursor_pos) = cursor_pos_as_world_pos(primary_window, &camera_query) {
             commands
-                .spawn_bundle(SpriteBundle {
+                .spawn(SpriteBundle {
                     sprite: Sprite {
                         color: Color::DARK_GREEN,
                         ..default()
