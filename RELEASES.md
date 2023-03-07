@@ -1,5 +1,9 @@
 # Release Notes
 
+## Version 0.3
+
+Migrated to `bevy 0.10`.
+
 ## Version 0.1
 
 ### Enhancements
