@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 
 use leafwing_input_playback::{
     input_capture::{InputCapturePlugin, InputModesCaptured},
@@ -56,14 +56,14 @@ struct Box;
 
 fn spawn_boxes(
     mut commands: Commands,
-    windows: Res<Windows>,
+    windows: Query<&Window, With<PrimaryWindow>>,
     mouse_input: Res<Input<MouseButton>>,
     camera_query: Query<(&Transform, &Camera)>,
 ) {
     const BOX_SCALE: f32 = 50.0;
 
     if mouse_input.pressed(MouseButton::Left) {
-        let primary_window = windows.primary();
+        let primary_window = windows.single();
         // Don't break if we leave the window
         if let Some(cursor_pos) = cursor_pos_as_world_pos(primary_window, &camera_query) {
             commands

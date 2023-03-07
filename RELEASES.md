@@ -1,5 +1,11 @@
 # Release Notes
 
+## Version 0.3
+
+Migrated to `bevy 0.10`.
+
+Note that `App::update` no longer sends an `AppExit` event: this may affect your tests!
+
 ## Version 0.1
 
 ### Enhancements

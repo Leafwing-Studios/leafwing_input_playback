@@ -2,9 +2,9 @@
 //!
 //! These are unified into a single [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource, which can be played back.
 
-use bevy::app::{App, AppExit, CoreStage, Plugin};
+use bevy::app::{App, AppExit, CoreSet, Plugin};
 use bevy::ecs::prelude::*;
-use bevy::input::gamepad::GamepadEventRaw;
+use bevy::input::gamepad::GamepadEvent;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{MouseButtonInput, MouseWheel};
 use bevy::time::Time;
@@ -30,20 +30,20 @@ impl Plugin for InputCapturePlugin {
         // Avoid double-adding frame_counter
         if !app.world.contains_resource::<FrameCount>() {
             app.init_resource::<FrameCount>()
-                .add_system_to_stage(CoreStage::First, frame_counter);
+                .add_system(frame_counter.in_base_set(CoreSet::First));
         }
 
         app.init_resource::<TimestampedInputs>()
             .init_resource::<InputModesCaptured>()
             .init_resource::<PlaybackFilePath>()
-            .add_system_to_stage(
+            .add_system(
                 // Capture any mocked input as well
-                CoreStage::Last,
-                capture_input,
+                capture_input.in_base_set(CoreSet::Last),
             )
-            .add_system_to_stage(
-                CoreStage::Last,
-                serialize_captured_input_on_exit.after(capture_input),
+            .add_system(
+                serialize_captured_input_on_exit
+                    .in_base_set(CoreSet::Last)
+                    .after(capture_input),
             );
     }
 }
@@ -100,7 +100,7 @@ pub fn capture_input(
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut cursor_moved_events: EventReader<CursorMoved>,
     mut keyboard_events: EventReader<KeyboardInput>,
-    mut gamepad_events: EventReader<GamepadEventRaw>,
+    mut gamepad_events: EventReader<GamepadEvent>,
     mut app_exit_events: EventReader<AppExit>,
     mut timestamped_input: ResMut<TimestampedInputs>,
     input_modes_captured: Res<InputModesCaptured>,

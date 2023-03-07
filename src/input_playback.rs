@@ -2,9 +2,9 @@
 //!
 //! These are played back by emulating assorted Bevy input events.
 
-use bevy::app::{App, AppExit, CoreStage, Plugin};
+use bevy::app::{App, AppExit, CoreSet, Plugin};
 use bevy::ecs::{prelude::*, system::SystemParam};
-use bevy::input::gamepad::GamepadEventRaw;
+use bevy::input::gamepad::GamepadEvent;
 use bevy::input::{
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
@@ -12,7 +12,7 @@ use bevy::input::{
 use bevy::log::warn;
 use bevy::time::Time;
 use bevy::utils::Duration;
-use bevy::window::{CursorMoved, Windows};
+use bevy::window::{CursorMoved, Window};
 use ron::de::from_reader;
 use std::fs::File;
 
@@ -33,7 +33,7 @@ impl Plugin for InputPlaybackPlugin {
         // Avoid double-adding frame_counter
         if !app.world.contains_resource::<FrameCount>() {
             app.init_resource::<FrameCount>()
-                .add_system_to_stage(CoreStage::First, frame_counter);
+                .add_system(frame_counter.in_base_set(CoreSet::First));
         }
 
         app.init_resource::<TimestampedInputs>()
@@ -41,9 +41,10 @@ impl Plugin for InputPlaybackPlugin {
             .init_resource::<PlaybackStrategy>()
             .init_resource::<PlaybackFilePath>()
             .add_startup_system(deserialize_timestamped_inputs)
-            .add_system_to_stage(
-                CoreStage::First,
-                playback_timestamped_input.after(frame_counter),
+            .add_system(
+                playback_timestamped_input
+                    .after(frame_counter)
+                    .in_base_set(CoreSet::First),
             );
     }
 }
@@ -94,13 +95,13 @@ pub enum PlaybackStrategy {
 #[derive(SystemParam)]
 #[allow(missing_docs)]
 pub struct InputWriters<'w, 's> {
-    pub keyboard_input: EventWriter<'w, 's, KeyboardInput>,
-    pub mouse_button_input: EventWriter<'w, 's, MouseButtonInput>,
-    pub mouse_wheel: EventWriter<'w, 's, MouseWheel>,
-    pub cursor_moved: EventWriter<'w, 's, CursorMoved>,
-    pub windows: ResMut<'w, Windows>,
-    pub gamepad: EventWriter<'w, 's, GamepadEventRaw>,
-    pub app_exit: EventWriter<'w, 's, AppExit>,
+    pub keyboard_input: EventWriter<'w, KeyboardInput>,
+    pub mouse_button_input: EventWriter<'w, MouseButtonInput>,
+    pub mouse_wheel: EventWriter<'w, MouseWheel>,
+    pub cursor_moved: EventWriter<'w, CursorMoved>,
+    pub windows: Query<'w, 's, &'static mut Window>,
+    pub gamepad: EventWriter<'w, GamepadEvent>,
+    pub app_exit: EventWriter<'w, AppExit>,
 }
 
 // `TimestampedInputs` is an iterator, so we need mutable access to be able to track which events we've seen
@@ -196,10 +197,10 @@ fn send_playback_events(
             // Window events MUST update the `Window` struct itself
             // BLOCKED: https://github.com/bevyengine/bevy/issues/6163
             CursorMoved(e) => {
-                if let Some(window) = input_writers.windows.get_mut(e.id) {
-                    window.set_cursor_position(e.position);
+                if let Ok(mut window) = input_writers.windows.get_mut(e.window) {
+                    window.set_cursor_position(Some(e.position));
                 } else {
-                    warn!("Window ID was not found when attempting to play back {e:?}")
+                    warn!("Window entity was not found when attempting to play back {e:?}")
                 }
 
                 input_writers.cursor_moved.send(e)

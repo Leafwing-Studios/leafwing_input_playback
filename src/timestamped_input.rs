@@ -4,7 +4,7 @@
 
 use bevy::app::AppExit;
 use bevy::ecs::prelude::*;
-use bevy::input::gamepad::GamepadEventRaw;
+use bevy::input::gamepad::GamepadEvent;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::{MouseButtonInput, MouseWheel};
 use bevy::utils::Duration;
@@ -361,7 +361,7 @@ pub enum InputEvent {
     MouseButton(MouseButtonInput),
     MouseWheel(MouseWheel),
     CursorMoved(CursorMoved),
-    Gamepad(GamepadEventRaw),
+    Gamepad(GamepadEvent),
     AppExit,
 }
 
@@ -389,8 +389,8 @@ impl From<CursorMoved> for InputEvent {
     }
 }
 
-impl From<GamepadEventRaw> for InputEvent {
-    fn from(event: GamepadEventRaw) -> Self {
+impl From<GamepadEvent> for InputEvent {
+    fn from(event: GamepadEvent) -> Self {
         InputEvent::Gamepad(event)
     }
 }
