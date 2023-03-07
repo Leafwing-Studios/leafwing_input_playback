@@ -102,7 +102,7 @@ mod gamepad_viewer_example {
     use std::f32::consts::PI;
 
     use bevy::{
-        input::gamepad::{GamepadButton, GamepadEvent, GamepadSettings},
+        input::gamepad::{GamepadButton, GamepadButtonChangedEvent, GamepadEvent, GamepadSettings},
         prelude::*,
         sprite::{MaterialMesh2dBundle, Mesh2dHandle},
     };
@@ -528,9 +528,14 @@ mod gamepad_viewer_example {
         mut query: Query<(&mut Text, &TextWithButtonValue)>,
     ) {
         for event in events.iter() {
-            if let GamepadEventType::ButtonChanged(button_type, value) = event.event_type {
+            if let GamepadEvent::Button(GamepadButtonChangedEvent {
+                gamepad: _,
+                button_type,
+                value,
+            }) = event
+            {
                 for (mut text, text_with_button_value) in query.iter_mut() {
-                    if button_type == **text_with_button_value {
+                    if *button_type == **text_with_button_value {
                         text.sections[0].value = format!("{:.3}", value);
                     }
                 }
@@ -544,7 +549,10 @@ mod gamepad_viewer_example {
         mut text_query: Query<(&mut Text, &TextWithAxes)>,
     ) {
         for event in events.iter() {
-            if let GamepadEventType::AxisChanged(axis_type, value) = event.event_type {
+            if let GamepadEvent::Axis(axis_changed_event) = event {
+                let axis_type = axis_changed_event.axis_type;
+                let value = axis_changed_event.value;
+
                 for (mut transform, move_with) in query.iter_mut() {
                     if axis_type == move_with.x_axis {
                         transform.translation.x = value * move_with.scale;
