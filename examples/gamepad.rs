@@ -102,7 +102,7 @@ mod gamepad_viewer_example {
     use std::f32::consts::PI;
 
     use bevy::{
-        input::gamepad::{GamepadButton, GamepadSettings},
+        input::gamepad::{GamepadButton, GamepadEvent, GamepadSettings},
         prelude::*,
         sprite::{MaterialMesh2dBundle, Mesh2dHandle},
     };
@@ -401,7 +401,7 @@ mod gamepad_viewer_example {
                                     style,
                                 },
                             ])
-                            .with_alignment(TextAlignment::BOTTOM_CENTER),
+                            .with_alignment(TextAlignment::Center),
                             ..default()
                         })
                         .insert(TextWithAxes { x_axis, y_axis });
@@ -466,7 +466,7 @@ mod gamepad_viewer_example {
                                     color: TEXT_COLOR,
                                 },
                             )
-                            .with_alignment(TextAlignment::CENTER),
+                            .with_alignment(TextAlignment::Center),
                             ..default()
                         })
                         .insert(TextWithButtonValue(button_type));
