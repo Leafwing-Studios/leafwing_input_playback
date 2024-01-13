@@ -8,20 +8,19 @@ use leafwing_input_playback::{
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(InputCapturePlugin)
-        .add_plugin(InputPlaybackPlugin)
+        .add_plugins((DefaultPlugins, InputCapturePlugin, InputPlaybackPlugin))
         // Disable all input capture and playback to start
         .insert_resource(InputModesCaptured::DISABLE_ALL)
         .insert_resource(PlaybackStrategy::Paused)
         // Creates a little game that spawns decaying boxes where the player clicks
         .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
-        .add_startup_system(setup)
-        .add_system(spawn_boxes)
-        .add_system(decay_boxes)
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (spawn_boxes, decay_boxes, toggle_capture_vs_playback),
+        )
         // Toggle between playback and capture by pressing Space
         .insert_resource(InputStrategy::Playback)
-        .add_system(toggle_capture_vs_playback)
         .run()
 }
 

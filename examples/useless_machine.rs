@@ -8,8 +8,7 @@ use leafwing_input_playback::serde::PlaybackFilePath;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(InputPlaybackPlugin)
+        .add_plugins((DefaultPlugins, InputPlaybackPlugin))
         .insert_resource(PlaybackFilePath::new("./data/app_exit.ron"))
         .run();
 }

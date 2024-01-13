@@ -15,26 +15,31 @@ const TEST_PRESS: KeyboardInput = KeyboardInput {
     scan_code: 1,
     key_code: Some(KeyCode::F),
     state: ButtonState::Pressed,
+    window: Entity::PLACEHOLDER,
 };
 
 const TEST_RELEASE: KeyboardInput = KeyboardInput {
     scan_code: 1,
     key_code: Some(KeyCode::F),
     state: ButtonState::Released,
+    window: Entity::PLACEHOLDER,
 };
 
 const TEST_MOUSE: MouseButtonInput = MouseButtonInput {
     button: MouseButton::Left,
     state: ButtonState::Pressed,
+    window: Entity::PLACEHOLDER,
 };
 
 fn capture_app() -> App {
     let mut app = App::new();
 
-    app.add_plugins(MinimalPlugins)
-        .add_plugin(WindowPlugin::default())
-        .add_plugin(InputPlugin)
-        .add_plugin(InputCapturePlugin);
+    app.add_plugins((
+        MinimalPlugins,
+        WindowPlugin::default(),
+        InputPlugin,
+        InputCapturePlugin,
+    ));
 
     app
 }

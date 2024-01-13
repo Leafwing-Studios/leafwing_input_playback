@@ -2,7 +2,7 @@
 //!
 //! These are played back by emulating assorted Bevy input events.
 
-use bevy::app::{App, AppExit, CoreSet, Plugin};
+use bevy::app::{App, AppExit, First, Plugin, Startup};
 use bevy::ecs::{prelude::*, system::SystemParam};
 use bevy::input::gamepad::GamepadEvent;
 use bevy::input::{
@@ -33,19 +33,15 @@ impl Plugin for InputPlaybackPlugin {
         // Avoid double-adding frame_counter
         if !app.world.contains_resource::<FrameCount>() {
             app.init_resource::<FrameCount>()
-                .add_system(frame_counter.in_base_set(CoreSet::First));
+                .add_systems(First, frame_counter);
         }
 
         app.init_resource::<TimestampedInputs>()
             .init_resource::<PlaybackProgress>()
             .init_resource::<PlaybackStrategy>()
             .init_resource::<PlaybackFilePath>()
-            .add_startup_system(deserialize_timestamped_inputs)
-            .add_system(
-                playback_timestamped_input
-                    .after(frame_counter)
-                    .in_base_set(CoreSet::First),
-            );
+            .add_systems(Startup, deserialize_timestamped_inputs)
+            .add_systems(First, playback_timestamped_input.after(frame_counter));
     }
 }
 

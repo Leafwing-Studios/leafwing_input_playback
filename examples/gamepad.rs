@@ -17,15 +17,17 @@ fn main() {
 
     App::new()
         // This plugin contains all the code from the original example
-        .add_plugin(GamepadViewerExample)
-        .add_plugin(InputCapturePlugin)
-        .add_plugin(InputPlaybackPlugin)
+        .add_plugins((
+            GamepadViewerExample,
+            InputCapturePlugin,
+            InputPlaybackPlugin,
+        ))
         // Disable all input capture and playback to start
         .insert_resource(InputModesCaptured::DISABLE_ALL)
         .insert_resource(PlaybackStrategy::Paused)
         // Toggle between playback and capture using Space
         .insert_resource(InputStrategy::Playback)
-        .add_system(toggle_capture_vs_playback)
+        .add_systems(Update, toggle_capture_vs_playback)
         .run();
 }
 
@@ -88,14 +90,19 @@ mod gamepad_viewer_example {
                 .init_resource::<ButtonMaterials>()
                 .init_resource::<ButtonMeshes>()
                 .init_resource::<FontHandle>()
-                .add_startup_system(setup)
-                .add_startup_system(setup_sticks)
-                .add_startup_system(setup_triggers)
-                .add_startup_system(setup_connected)
-                .add_system(update_buttons)
-                .add_system(update_button_values)
-                .add_system(update_axes)
-                .add_system(update_connected);
+                .add_systems(
+                    Startup,
+                    (setup, setup_sticks, setup_triggers, setup_connected),
+                )
+                .add_systems(
+                    Update,
+                    (
+                        update_buttons,
+                        update_button_values,
+                        update_axes,
+                        update_connected,
+                    ),
+                );
         }
     }
 
@@ -527,7 +534,7 @@ mod gamepad_viewer_example {
         mut events: EventReader<GamepadEvent>,
         mut query: Query<(&mut Text, &TextWithButtonValue)>,
     ) {
-        for event in events.iter() {
+        for event in events.read() {
             if let GamepadEvent::Button(GamepadButtonChangedEvent {
                 gamepad: _,
                 button_type,
@@ -548,7 +555,7 @@ mod gamepad_viewer_example {
         mut query: Query<(&mut Transform, &MoveWithAxes)>,
         mut text_query: Query<(&mut Text, &TextWithAxes)>,
     ) {
-        for event in events.iter() {
+        for event in events.read() {
             if let GamepadEvent::Axis(axis_changed_event) = event {
                 let axis_type = axis_changed_event.axis_type;
                 let value = axis_changed_event.value;

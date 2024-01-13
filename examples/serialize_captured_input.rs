@@ -7,8 +7,7 @@ use leafwing_input_playback::serde::PlaybackFilePath;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(InputCapturePlugin)
+        .add_plugins((DefaultPlugins, InputCapturePlugin))
         .insert_resource(PlaybackFilePath::new("./data/test_playback.ron"))
         // In this example, we're only capturing keyboard inputs
         .insert_resource(InputModesCaptured {
