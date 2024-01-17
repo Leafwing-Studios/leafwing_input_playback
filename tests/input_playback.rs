@@ -38,7 +38,8 @@ fn playback_app(strategy: PlaybackStrategy) -> App {
         InputPlugin,
         InputPlaybackPlugin,
     ));
-
+    app.world
+        .remove_resource::<bevy::ecs::event::EventUpdateSignal>();
     *app.world.resource_mut::<PlaybackStrategy>() = strategy;
 
     app
