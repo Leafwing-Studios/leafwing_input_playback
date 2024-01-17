@@ -22,7 +22,7 @@ use crate::timestamped_input::{TimestampedInputEvent, TimestampedInputs};
 
 /// Reads from the [`TimestampedInputs`] event stream to determine which events to play back.
 ///
-/// Events are played back during [`CoreStage::First`] to accurately mimic the behavior of native `winit`-based inputs.
+/// Events are played back during the [`First`] schedule to accurately mimic the behavior of native `winit`-based inputs.
 /// Which events are played back are controlled via the [`PlaybackStrategy`] resource.
 ///  
 /// Input is deserialized on app startup from the path stored in the [`PlaybackFilePath`] resource, if any.

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::ops::{Add, Sub};
 /// The number of frames that have elapsed since the app started
 ///
-/// Updated in [`time_tracker`] during [`CoreStage::First`].
+/// Updated in [`time_tracker`] during the [`First`] schedule.
 #[derive(
     Resource,
     Clone,
@@ -38,7 +38,7 @@ impl Sub<FrameCount> for FrameCount {
 
 /// A system which increases the value of the [`FrameCount`] resource by 1 every frame
 ///
-/// This system should run during [`CoreStage::First`].
+/// This system should run during the [`First`] schedule.
 pub fn frame_counter(mut frame_count: ResMut<FrameCount>) {
     frame_count.0 += 1;
 }
