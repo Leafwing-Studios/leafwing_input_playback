@@ -19,22 +19,27 @@ const TEST_PRESS: KeyboardInput = KeyboardInput {
     scan_code: 1,
     key_code: Some(KeyCode::F),
     state: ButtonState::Pressed,
+    window: Entity::PLACEHOLDER,
 };
 
 const TEST_RELEASE: KeyboardInput = KeyboardInput {
     scan_code: 1,
     key_code: Some(KeyCode::F),
     state: ButtonState::Released,
+    window: Entity::PLACEHOLDER,
 };
 
 fn playback_app(strategy: PlaybackStrategy) -> App {
     let mut app = App::new();
 
-    app.add_plugins(MinimalPlugins)
-        .add_plugin(WindowPlugin::default())
-        .add_plugin(InputPlugin)
-        .add_plugin(InputPlaybackPlugin);
-
+    app.add_plugins((
+        MinimalPlugins,
+        WindowPlugin::default(),
+        InputPlugin,
+        InputPlaybackPlugin,
+    ));
+    app.world
+        .remove_resource::<bevy::ecs::event::EventUpdateSignal>();
     *app.world.resource_mut::<PlaybackStrategy>() = strategy;
 
     app
@@ -85,7 +90,7 @@ fn minimal_playback() {
 #[test]
 fn capture_and_playback() {
     let mut app = playback_app(PlaybackStrategy::default());
-    app.add_plugin(InputCapturePlugin);
+    app.add_plugins(InputCapturePlugin);
     app.insert_resource(PlaybackStrategy::Paused);
 
     let mut input_events = app.world.resource_mut::<Events<KeyboardInput>>();

@@ -6,15 +6,14 @@ use leafwing_input_playback::serde::PlaybackFilePath;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(InputPlaybackPlugin)
+        .add_plugins((DefaultPlugins, InputPlaybackPlugin))
         .insert_resource(PlaybackFilePath::new("./data/hello_world.ron"))
-        .add_system(debug_keyboard_inputs)
+        .add_systems(Update, debug_keyboard_inputs)
         .run();
 }
 
 fn debug_keyboard_inputs(mut keyboard_events: EventReader<KeyboardInput>) {
-    for keyboard_event in keyboard_events.iter() {
+    for keyboard_event in keyboard_events.read() {
         dbg!(keyboard_event);
     }
 }

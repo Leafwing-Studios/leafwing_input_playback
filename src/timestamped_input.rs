@@ -410,11 +410,13 @@ mod tests {
     const LEFT_CLICK_PRESS: InputEvent = InputEvent::MouseButton(MouseButtonInput {
         button: MouseButton::Left,
         state: ButtonState::Pressed,
+        window: Entity::PLACEHOLDER,
     });
 
     const LEFT_CLICK_RELEASE: InputEvent = InputEvent::MouseButton(MouseButtonInput {
         button: MouseButton::Left,
         state: ButtonState::Released,
+        window: Entity::PLACEHOLDER,
     });
 
     fn complex_timestamped_input() -> TimestampedInputs {

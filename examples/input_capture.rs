@@ -5,9 +5,8 @@ use leafwing_input_playback::{
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(InputCapturePlugin)
-        .add_system(debug_input_capture)
+        .add_plugins((DefaultPlugins, InputCapturePlugin))
+        .add_systems(Update, debug_input_capture)
         .run()
 }
 

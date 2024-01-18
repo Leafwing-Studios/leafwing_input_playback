@@ -2,7 +2,7 @@
 //!
 //! These are unified into a single [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource, which can be played back.
 
-use bevy::app::{App, AppExit, CoreSet, Plugin};
+use bevy::app::{App, AppExit, First, Last, Plugin};
 use bevy::ecs::prelude::*;
 use bevy::input::gamepad::GamepadEvent;
 use bevy::input::keyboard::KeyboardInput;
@@ -30,20 +30,20 @@ impl Plugin for InputCapturePlugin {
         // Avoid double-adding frame_counter
         if !app.world.contains_resource::<FrameCount>() {
             app.init_resource::<FrameCount>()
-                .add_system(frame_counter.in_base_set(CoreSet::First));
+                .add_systems(First, frame_counter);
         }
 
         app.init_resource::<TimestampedInputs>()
             .init_resource::<InputModesCaptured>()
             .init_resource::<PlaybackFilePath>()
-            .add_system(
-                // Capture any mocked input as well
-                capture_input.in_base_set(CoreSet::Last),
-            )
-            .add_system(
-                serialize_captured_input_on_exit
-                    .in_base_set(CoreSet::Last)
-                    .after(capture_input),
+            .add_systems(
+                Last,
+                (
+                    // Capture any mocked input as well
+                    capture_input,
+                    serialize_captured_input_on_exit,
+                )
+                    .chain(),
             );
     }
 }
@@ -118,33 +118,42 @@ pub fn capture_input(
         timestamped_input.send_multiple(
             frame,
             time_since_startup,
-            mouse_button_events.iter().cloned(),
+            mouse_button_events.read().cloned(),
         );
 
         timestamped_input.send_multiple(
             frame,
             time_since_startup,
-            mouse_wheel_events.iter().cloned(),
+            mouse_wheel_events.read().cloned(),
         );
+    } else {
+        mouse_button_events.clear();
+        mouse_wheel_events.clear();
     }
 
     if input_modes_captured.mouse_motion {
         timestamped_input.send_multiple(
             frame,
             time_since_startup,
-            cursor_moved_events.iter().cloned(),
+            cursor_moved_events.read().cloned(),
         );
+    } else {
+        cursor_moved_events.clear();
     }
 
     if input_modes_captured.keyboard {
-        timestamped_input.send_multiple(frame, time_since_startup, keyboard_events.iter().cloned());
+        timestamped_input.send_multiple(frame, time_since_startup, keyboard_events.read().cloned());
+    } else {
+        keyboard_events.clear()
     }
 
     if input_modes_captured.gamepad {
-        timestamped_input.send_multiple(frame, time_since_startup, gamepad_events.iter().cloned());
+        timestamped_input.send_multiple(frame, time_since_startup, gamepad_events.read().cloned());
+    } else {
+        gamepad_events.clear()
     }
 
-    timestamped_input.send_multiple(frame, time_since_startup, app_exit_events.iter().cloned())
+    timestamped_input.send_multiple(frame, time_since_startup, app_exit_events.read().cloned())
 }
 
 /// Serializes captured input to the path given in the [`PlaybackFilePath`] resource.
