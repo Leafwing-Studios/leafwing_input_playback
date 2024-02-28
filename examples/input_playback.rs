@@ -56,7 +56,7 @@ struct Box;
 fn spawn_boxes(
     mut commands: Commands,
     windows: Query<&Window, With<PrimaryWindow>>,
-    mouse_input: Res<Input<MouseButton>>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
     camera_query: Query<(&Transform, &Camera)>,
 ) {
     const BOX_SCALE: f32 = 50.0;
@@ -99,7 +99,7 @@ fn decay_boxes(mut query: Query<(Entity, &mut Transform), With<Box>>, mut comman
 fn toggle_capture_vs_playback(
     mut input_modes: ResMut<InputModesCaptured>,
     mut playback_strategy: ResMut<PlaybackStrategy>,
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     mut timestamped_input: ResMut<TimestampedInputs>,
     mut input_strategy: ResMut<InputStrategy>,
 ) {

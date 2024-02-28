@@ -1,3 +1,4 @@
+use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::MouseButtonInput;
 use bevy::input::ButtonState;
@@ -12,15 +13,15 @@ use leafwing_input_playback::timestamped_input::{
 };
 
 const TEST_PRESS: KeyboardInput = KeyboardInput {
-    scan_code: 1,
-    key_code: Some(KeyCode::F),
+    logical_key: Key::Dead(None),
+    key_code: KeyCode::KeyF,
     state: ButtonState::Pressed,
     window: Entity::PLACEHOLDER,
 };
 
 const TEST_RELEASE: KeyboardInput = KeyboardInput {
-    scan_code: 1,
-    key_code: Some(KeyCode::F),
+    logical_key: Key::Dead(None),
+    key_code: KeyCode::KeyF,
     state: ButtonState::Released,
     window: Entity::PLACEHOLDER,
 };

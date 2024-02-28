@@ -187,9 +187,15 @@ fn send_playback_events(
     for timestamped_input_event in timestamped_input_events {
         use crate::timestamped_input::InputEvent::*;
         match timestamped_input_event.input_event {
-            Keyboard(e) => input_writers.keyboard_input.send(e),
-            MouseButton(e) => input_writers.mouse_button_input.send(e),
-            MouseWheel(e) => input_writers.mouse_wheel.send(e),
+            Keyboard(e) => {
+                input_writers.keyboard_input.send(e);
+            },
+            MouseButton(e) => {
+                input_writers.mouse_button_input.send(e);
+            },
+            MouseWheel(e) => {
+                input_writers.mouse_wheel.send(e);
+            },
             // Window events MUST update the `Window` struct itself
             // BLOCKED: https://github.com/bevyengine/bevy/issues/6163
             CursorMoved(e) => {
@@ -199,12 +205,14 @@ fn send_playback_events(
                     warn!("Window entity was not found when attempting to play back {e:?}")
                 }
 
-                input_writers.cursor_moved.send(e)
+                input_writers.cursor_moved.send(e);
             }
             Gamepad(e) => {
                 input_writers.gamepad.send(e);
             }
-            AppExit => input_writers.app_exit.send_default(),
+            AppExit => {
+                input_writers.app_exit.send_default();
+            },
         };
     }
 }

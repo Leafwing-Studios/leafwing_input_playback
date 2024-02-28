@@ -1,5 +1,6 @@
 // BLOCKED: add time strategy tests: https://github.com/bevyengine/bevy/issues/6146
 
+use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
 use bevy::input::InputPlugin;
@@ -16,15 +17,15 @@ use leafwing_input_playback::input_playback::PlaybackStrategy;
 use leafwing_input_playback::timestamped_input::TimestampedInputs;
 
 const TEST_PRESS: KeyboardInput = KeyboardInput {
-    scan_code: 1,
-    key_code: Some(KeyCode::F),
+    logical_key: Key::Dead(None),
+    key_code: KeyCode::KeyF,
     state: ButtonState::Pressed,
     window: Entity::PLACEHOLDER,
 };
 
 const TEST_RELEASE: KeyboardInput = KeyboardInput {
-    scan_code: 1,
-    key_code: Some(KeyCode::F),
+    logical_key: Key::Dead(None),
+    key_code: KeyCode::KeyF,
     state: ButtonState::Released,
     window: Entity::PLACEHOLDER,
 };
@@ -76,15 +77,15 @@ fn minimal_playback() {
     // By default, only events up to the current frame are played back
     let input_events = app.world.resource::<Events<KeyboardInput>>();
     assert_eq!(input_events.len(), 1);
-    let input = app.world.resource::<Input<KeyCode>>();
-    assert!(input.pressed(KeyCode::F));
+    let input = app.world.resource::<ButtonInput<KeyCode>>();
+    assert!(input.pressed(KeyCode::KeyF));
 
     app.update();
     let input_events = app.world.resource::<Events<KeyboardInput>>();
     // Events are double-buffered
     assert_eq!(input_events.len(), 2);
-    let input = app.world.resource::<Input<KeyCode>>();
-    assert!(!input.pressed(KeyCode::F));
+    let input = app.world.resource::<ButtonInput<KeyCode>>();
+    assert!(!input.pressed(KeyCode::KeyF));
 }
 
 #[test]
@@ -98,14 +99,14 @@ fn capture_and_playback() {
 
     app.update();
 
-    let input = app.world.resource::<Input<KeyCode>>();
+    let input = app.world.resource::<ButtonInput<KeyCode>>();
     // Input is pressed because we just sent a real event
-    assert!(input.pressed(TEST_PRESS.key_code.unwrap()));
+    assert!(input.pressed(TEST_PRESS.key_code));
 
     app.update();
-    let input = app.world.resource::<Input<KeyCode>>();
+    let input = app.world.resource::<ButtonInput<KeyCode>>();
     // Input is not pressed, as playback is not enabled and the previous event expired
-    assert!(input.pressed(TEST_PRESS.key_code.unwrap()));
+    assert!(input.pressed(TEST_PRESS.key_code));
 
     app.insert_resource(InputModesCaptured::DISABLE_ALL);
     // This should trigger playback of input captured so far.
@@ -113,9 +114,9 @@ fn capture_and_playback() {
 
     app.update();
 
-    let input = app.world.resource::<Input<KeyCode>>();
+    let input = app.world.resource::<ButtonInput<KeyCode>>();
     // Input is now pressed, as the pressed key has been played back.
-    assert!(input.pressed(TEST_PRESS.key_code.unwrap()));
+    assert!(input.pressed(TEST_PRESS.key_code));
 }
 
 #[test]

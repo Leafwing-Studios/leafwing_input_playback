@@ -40,7 +40,7 @@ enum InputStrategy {
 fn toggle_capture_vs_playback(
     mut input_modes: ResMut<InputModesCaptured>,
     mut playback_strategy: ResMut<PlaybackStrategy>,
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     mut timestamped_input: ResMut<TimestampedInputs>,
     mut input_strategy: ResMut<InputStrategy>,
 ) {
@@ -178,12 +178,12 @@ mod gamepad_viewer_example {
         fn from_world(world: &mut World) -> Self {
             let mut meshes = world.resource_mut::<Assets<Mesh>>();
             Self {
-                circle: meshes.add(shape::Circle::new(BUTTON_RADIUS).into()).into(),
+                circle: meshes.add(Circle::new(BUTTON_RADIUS).mesh()).into(),
                 triangle: meshes
-                    .add(shape::RegularPolygon::new(BUTTON_RADIUS, 3).into())
+                    .add(RegularPolygon::new(BUTTON_RADIUS, 3).mesh())
                     .into(),
-                start_pause: meshes.add(shape::Quad::new(START_SIZE).into()).into(),
-                trigger: meshes.add(shape::Quad::new(TRIGGER_SIZE).into()).into(),
+                start_pause: meshes.add(Rectangle::new(START_SIZE.x, START_SIZE.y).mesh()).into(),
+                trigger: meshes.add(Rectangle::new(TRIGGER_SIZE.x, TRIGGER_SIZE.y).mesh()).into(),
             }
         }
     }
@@ -408,7 +408,7 @@ mod gamepad_viewer_example {
                                     style,
                                 },
                             ])
-                            .with_alignment(TextAlignment::Center),
+                            .with_justify(JustifyText::Center),
                             ..default()
                         })
                         .insert(TextWithAxes { x_axis, y_axis });
@@ -473,7 +473,7 @@ mod gamepad_viewer_example {
                                     color: TEXT_COLOR,
                                 },
                             )
-                            .with_alignment(TextAlignment::Center),
+                            .with_justify(JustifyText::Center),
                             ..default()
                         })
                         .insert(TextWithButtonValue(button_type));
@@ -514,7 +514,7 @@ mod gamepad_viewer_example {
 
     fn update_buttons(
         gamepads: Res<Gamepads>,
-        button_inputs: Res<Input<GamepadButton>>,
+        button_inputs: Res<ButtonInput<GamepadButton>>,
         materials: Res<ButtonMaterials>,
         mut query: Query<(&mut Handle<ColorMaterial>, &ReactTo)>,
     ) {
