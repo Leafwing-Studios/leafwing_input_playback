@@ -2,7 +2,7 @@
 //!
 //! These are played back by emulating assorted Bevy input events.
 
-use bevy::app::{App, AppExit, First, Plugin, Startup};
+use bevy::app::{App, AppExit, First, Plugin};
 use bevy::ecs::{prelude::*, system::SystemParam};
 use bevy::input::gamepad::GamepadEvent;
 use bevy::input::{
@@ -76,7 +76,7 @@ pub fn initiate_input_playback(
     if let Some(event) = begin_capture_events.read().next() {
         commands.init_resource::<TimestampedInputs>();
         commands.init_resource::<PlaybackProgress>();
-        commands.insert_resource(event.playback_strategy.clone());
+        commands.insert_resource(event.playback_strategy);
         let playback_path = PlaybackFilePath::new(&event.filepath);
         if let Some(path) = playback_path.path() {
             let file = File::open(path).unwrap();
