@@ -36,14 +36,87 @@ impl Plugin for InputPlaybackPlugin {
                 .add_systems(First, frame_counter);
         }
 
-        app.init_resource::<TimestampedInputs>()
-            .init_resource::<PlaybackProgress>()
-            .init_resource::<PlaybackStrategy>()
-            .init_resource::<PlaybackFilePath>()
-            .add_systems(Startup, deserialize_timestamped_inputs)
-            .add_systems(First, playback_timestamped_input.after(frame_counter));
+        app.add_event::<BeginInputPlayback>()
+            .add_event::<EndInputPlayback>()
+            .add_systems(
+                First,
+                (handle_end_playback_event, initiate_input_playback).chain(),
+            )
+            .add_systems(
+                First,
+                playback_timestamped_input
+                    .run_if(resource_exists::<PlaybackProgress>)
+                    .after(frame_counter)
+                    .after(initiate_input_playback),
+            );
     }
 }
+
+/// An Event that users can send to initiate input capture.
+///
+/// Data is serialized to the provided `filepath` when either an [`EndCaptureEvent`] or an [`AppExit`] event is detected.
+#[derive(Debug, Default, Event)]
+pub struct BeginInputPlayback {
+    /// The filepath at which to serialize captured input data.
+    pub filepath: String,
+    /// Controls the approach used for playing back recorded inputs.
+    ///
+    /// See [`PlaybackStrategy`] for more information.
+    pub playback_strategy: PlaybackStrategy,
+    /// A entity corresponding to the [`bevy::window::Window`] which will receive input events.
+    /// If unspecified, input events will target the serialized window entity, which may be fragile.
+    pub playback_window: Option<Entity>,
+}
+
+/// Initiates input playback when a [`BeginInputPlayback`] is detected.
+pub fn initiate_input_playback(
+    mut commands: Commands,
+    mut begin_capture_events: EventReader<BeginInputPlayback>,
+) {
+    if let Some(event) = begin_capture_events.read().next() {
+        commands.init_resource::<TimestampedInputs>();
+        commands.init_resource::<PlaybackProgress>();
+        commands.insert_resource(event.playback_strategy.clone());
+        let playback_path = PlaybackFilePath::new(&event.filepath);
+        if let Some(path) = playback_path.path() {
+            let file = File::open(path).unwrap();
+            let timestamped_inputs: TimestampedInputs = from_reader(file).unwrap();
+            commands.insert_resource(timestamped_inputs);
+        }
+        commands.insert_resource(playback_path);
+        if let Some(playback_window) = event.playback_window {
+            commands.insert_resource(PlaybackWindow(playback_window));
+        }
+    }
+    begin_capture_events.clear();
+}
+
+/// An Event that users can send to end input playback prematurely.
+#[derive(Debug, Event)]
+pub struct EndInputPlayback;
+
+/// Serializes captured input to the path given in the [`PlaybackFilePath`] resource when an [`EndInputCapture`] is detected.
+///
+/// Use the [`serialized_timestamped_inputs`] function directly if you want to implement custom checkpointing strategies.
+pub fn handle_end_playback_event(
+    mut commands: Commands,
+    mut end_capture_events: EventReader<EndInputPlayback>,
+) {
+    if !end_capture_events.is_empty() {
+        end_capture_events.clear();
+        commands.remove_resource::<PlaybackFilePath>();
+        commands.remove_resource::<TimestampedInputs>();
+        commands.remove_resource::<PlaybackProgress>();
+        commands.remove_resource::<PlaybackStrategy>();
+        commands.remove_resource::<PlaybackWindow>();
+    }
+}
+
+/// The `Window` entity for which inputs will be captured.
+///
+/// If this Resource is attached, input events will be forwarded to this window entity rather than the serialized window entity.
+#[derive(Debug, Resource)]
+pub struct PlaybackWindow(Entity);
 
 /// Controls the approach used for playing back recorded inputs
 ///
@@ -219,13 +292,12 @@ fn send_playback_events(
 
 /// Reads the stored file paths from the [`PlaybackFilePath`] location (if any)
 pub fn deserialize_timestamped_inputs(
-    mut timestamped_inputs: ResMut<TimestampedInputs>,
-    playback_path: Res<PlaybackFilePath>,
-) {
-    if let Some(file_path) = playback_path.path() {
+    playback_path: &PlaybackFilePath,
+)-> Option<Result<TimestampedInputs, ron::de::SpannedError>> {
+    playback_path.path().as_ref().map(|file_path| {
         let file = File::open(file_path).unwrap();
-        *timestamped_inputs = from_reader(file).unwrap();
-    }
+        from_reader(file)
+    })
 }
 
 /// How far through the current cycle of input playback we've gotten.
