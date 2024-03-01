@@ -293,7 +293,7 @@ fn send_playback_events(
 /// Reads the stored file paths from the [`PlaybackFilePath`] location (if any)
 pub fn deserialize_timestamped_inputs(
     playback_path: &PlaybackFilePath,
-)-> Option<Result<TimestampedInputs, ron::de::SpannedError>> {
+) -> Option<Result<TimestampedInputs, ron::de::SpannedError>> {
     playback_path.path().as_ref().map(|file_path| {
         let file = File::open(file_path).unwrap();
         from_reader(file)
