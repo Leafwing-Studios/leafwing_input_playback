@@ -27,6 +27,7 @@ ron = "0.8"
 
 [dev-dependencies]
 bevy = {version = "0.13", default_features = true, features = ["serialize"]}
+smol_str = "0.2"
 
 [lib]
 name = "leafwing_input_playback"

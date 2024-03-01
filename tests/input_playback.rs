@@ -17,14 +17,14 @@ use leafwing_input_playback::input_playback::PlaybackStrategy;
 use leafwing_input_playback::timestamped_input::TimestampedInputs;
 
 const TEST_PRESS: KeyboardInput = KeyboardInput {
-    logical_key: Key::Dead(None),
+    logical_key: Key::Character(smol_str::SmolStr::new_static("F")),
     key_code: KeyCode::KeyF,
     state: ButtonState::Pressed,
     window: Entity::PLACEHOLDER,
 };
 
 const TEST_RELEASE: KeyboardInput = KeyboardInput {
-    logical_key: Key::Dead(None),
+    logical_key: Key::Character(smol_str::SmolStr::new_static("F")),
     key_code: KeyCode::KeyF,
     state: ButtonState::Released,
     window: Entity::PLACEHOLDER,
