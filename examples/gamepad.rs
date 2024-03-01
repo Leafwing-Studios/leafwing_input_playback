@@ -182,8 +182,12 @@ mod gamepad_viewer_example {
                 triangle: meshes
                     .add(RegularPolygon::new(BUTTON_RADIUS, 3).mesh())
                     .into(),
-                start_pause: meshes.add(Rectangle::new(START_SIZE.x, START_SIZE.y).mesh()).into(),
-                trigger: meshes.add(Rectangle::new(TRIGGER_SIZE.x, TRIGGER_SIZE.y).mesh()).into(),
+                start_pause: meshes
+                    .add(Rectangle::new(START_SIZE.x, START_SIZE.y).mesh())
+                    .into(),
+                trigger: meshes
+                    .add(Rectangle::new(TRIGGER_SIZE.x, TRIGGER_SIZE.y).mesh())
+                    .into(),
             }
         }
     }

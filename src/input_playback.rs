@@ -189,13 +189,13 @@ fn send_playback_events(
         match timestamped_input_event.input_event {
             Keyboard(e) => {
                 input_writers.keyboard_input.send(e);
-            },
+            }
             MouseButton(e) => {
                 input_writers.mouse_button_input.send(e);
-            },
+            }
             MouseWheel(e) => {
                 input_writers.mouse_wheel.send(e);
-            },
+            }
             // Window events MUST update the `Window` struct itself
             // BLOCKED: https://github.com/bevyengine/bevy/issues/6163
             CursorMoved(e) => {
@@ -212,7 +212,7 @@ fn send_playback_events(
             }
             AppExit => {
                 input_writers.app_exit.send_default();
-            },
+            }
         };
     }
 }
