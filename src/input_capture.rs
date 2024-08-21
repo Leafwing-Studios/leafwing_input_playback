@@ -178,6 +178,7 @@ pub fn serialize_timestamped_inputs(
     if let Some(file_path) = playback_file.path() {
         let mut file = OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .open(file_path)
             .expect("Could not open file.");
