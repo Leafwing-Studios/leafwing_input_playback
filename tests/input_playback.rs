@@ -1,6 +1,5 @@
 // BLOCKED: add time strategy tests: https://github.com/bevyengine/bevy/issues/6146
 
-use bevy::ecs::event::EventRegistry;
 use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
@@ -41,9 +40,6 @@ fn playback_app(strategy: PlaybackStrategy) -> App {
         InputPlugin,
         InputPlaybackPlugin,
     ));
-
-    let mut registry = app.world_mut().resource_mut::<EventRegistry>();
-    registry.should_update = ShouldUpdateEvents::Always;
     *app.world_mut().resource_mut::<PlaybackStrategy>() = strategy;
 
     app
@@ -71,13 +67,14 @@ fn complex_timestamped_input() -> TimestampedInputs {
 #[test]
 fn minimal_playback() {
     let mut app = playback_app(PlaybackStrategy::FrameCount);
-
     let input_events = app.world().resource::<Events<KeyboardInput>>();
     assert_eq!(input_events.len(), 0);
+
     *app.world_mut().resource_mut::<TimestampedInputs>() = simple_timestamped_input();
 
     app.update();
 
+    // By default, only events up to the current frame are played back
     let input_events = app.world().resource::<Events<KeyboardInput>>();
     assert_eq!(input_events.len(), 1);
     let input = app.world().resource::<ButtonInput<KeyCode>>();
@@ -85,7 +82,8 @@ fn minimal_playback() {
 
     app.update();
     let input_events = app.world().resource::<Events<KeyboardInput>>();
-    assert_eq!(input_events.len(), 1);
+    // Events are double-buffered
+    assert_eq!(input_events.len(), 2);
     let input = app.world().resource::<ButtonInput<KeyCode>>();
     assert!(!input.pressed(KeyCode::KeyF));
 }
@@ -170,7 +168,6 @@ fn playback_strategy_paused() {
 #[test]
 fn playback_strategy_frame() {
     let mut app = playback_app(PlaybackStrategy::FrameCount);
-
     *app.world_mut().resource_mut::<TimestampedInputs>() = complex_timestamped_input();
 
     let timestamped_input = app.world().resource::<TimestampedInputs>();
@@ -211,13 +208,13 @@ fn playback_strategy_frame_range_once() {
     // Frame 3 (events are double buffered)
     app.update();
     let input_events = app.world().resource::<Events<KeyboardInput>>();
-    assert_eq!(input_events.len(), 1);
+    assert_eq!(input_events.len(), 3);
 
     // Frame 4 (events are double buffered)
     app.update();
     let input_events = app.world().resource::<Events<KeyboardInput>>();
     assert_eq!(*app.world().resource::<PlaybackStrategy>(), strategy);
-    assert_eq!(input_events.len(), 0);
+    assert_eq!(input_events.len(), 1);
 
     // Paused
     app.update();
@@ -249,13 +246,13 @@ fn playback_strategy_frame_range_loop() {
     // Frame 3 (events are double buffered)
     app.update();
     let input_events = app.world().resource::<Events<KeyboardInput>>();
-    assert_eq!(input_events.len(), 1);
+    assert_eq!(input_events.len(), 3);
 
     // Frame 4 (events are double buffered)
     app.update();
     let input_events = app.world().resource::<Events<KeyboardInput>>();
     assert_eq!(*app.world().resource::<PlaybackStrategy>(), strategy);
-    assert_eq!(input_events.len(), 0);
+    assert_eq!(input_events.len(), 1);
 
     // Spacing frame
     app.update();
