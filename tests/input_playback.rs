@@ -1,5 +1,6 @@
 // BLOCKED: add time strategy tests: https://github.com/bevyengine/bevy/issues/6146
 
+use bevy::ecs::event::EventRegistry;
 use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
@@ -7,10 +8,9 @@ use bevy::input::InputPlugin;
 use bevy::prelude::*;
 use bevy::time::TimeUpdateStrategy;
 use bevy::utils::Duration;
-
 use bevy::window::WindowPlugin;
-use leafwing_input_playback::frame_counting::FrameCount;
 
+use leafwing_input_playback::frame_counting::FrameCount;
 use leafwing_input_playback::input_capture::InputCapturePlugin;
 use leafwing_input_playback::input_capture::InputModesCaptured;
 use leafwing_input_playback::input_playback::InputPlaybackPlugin;
@@ -40,6 +40,10 @@ fn playback_app(strategy: PlaybackStrategy) -> App {
         InputPlugin,
         InputPlaybackPlugin,
     ));
+
+    let mut registry = app.world_mut().resource_mut::<EventRegistry>();
+    registry.should_update = ShouldUpdateEvents::Always;
+
     *app.world_mut().resource_mut::<PlaybackStrategy>() = strategy;
 
     app
