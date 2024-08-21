@@ -1,4 +1,4 @@
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{color::palettes, prelude::*, window::PrimaryWindow};
 
 use leafwing_input_playback::{
     input_capture::{InputCapturePlugin, InputModesCaptured},
@@ -6,14 +6,14 @@ use leafwing_input_playback::{
     timestamped_input::TimestampedInputs,
 };
 
-fn main() {
+fn main() -> AppExit {
     App::new()
         .add_plugins((DefaultPlugins, InputCapturePlugin, InputPlaybackPlugin))
         // Disable all input capture and playback to start
         .insert_resource(InputModesCaptured::DISABLE_ALL)
         .insert_resource(PlaybackStrategy::Paused)
         // Creates a little game that spawns decaying boxes where the player clicks
-        .insert_resource(ClearColor(Color::rgb(0.9, 0.9, 0.9)))
+        .insert_resource(ClearColor(Color::srgb(0.9, 0.9, 0.9)))
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -43,7 +43,7 @@ pub fn cursor_pos_as_world_pos(
         let window_size = Vec2::new(current_window.width(), current_window.height());
 
         // Convert screen position [0..resolution] to ndc [-1..1]
-        let ndc_to_world = cam_t.compute_matrix() * cam.projection_matrix().inverse();
+        let ndc_to_world = cam_t.compute_matrix() * cam.clip_from_view().inverse();
         let ndc = (Vec2::new(cursor_pos.x, cursor_pos.y) / window_size) * 2.0 - Vec2::ONE;
         let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
         world_pos.truncate()
@@ -68,7 +68,7 @@ fn spawn_boxes(
             commands
                 .spawn(SpriteBundle {
                     sprite: Sprite {
-                        color: Color::DARK_GREEN,
+                        color: Color::Srgba(palettes::css::DARK_GREEN),
                         ..default()
                     },
                     transform: Transform {

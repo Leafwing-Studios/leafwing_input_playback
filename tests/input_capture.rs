@@ -49,12 +49,12 @@ fn capture_app() -> App {
 fn capture_sent_events() {
     let mut app = capture_app();
 
-    let mut keyboard_events = app.world.resource_mut::<Events<KeyboardInput>>();
+    let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
     keyboard_events.send(TEST_RELEASE);
 
     app.update();
-    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.len(), 2);
 }
 
@@ -62,17 +62,17 @@ fn capture_sent_events() {
 fn identity_of_sent_events() {
     let mut app = capture_app();
 
-    let mut keyboard_events = app.world.resource_mut::<Events<KeyboardInput>>();
+    let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
 
     // Events within the same frame are not ordered reliably
     app.update();
 
-    let mut mouse_events = app.world.resource_mut::<Events<MouseButtonInput>>();
+    let mut mouse_events = app.world_mut().resource_mut::<Events<MouseButtonInput>>();
     mouse_events.send(TEST_MOUSE);
 
     app.update();
-    let mut timestamped_input = app.world.resource_mut::<TimestampedInputs>();
+    let mut timestamped_input = app.world_mut().resource_mut::<TimestampedInputs>();
     let mut iterator = timestamped_input.iter_all().into_iter();
 
     let first_event: TimestampedInputEvent = iterator.next().unwrap();
@@ -90,16 +90,16 @@ fn identity_of_sent_events() {
 fn framecount_of_sent_events() {
     let mut app = capture_app();
 
-    let mut keyboard_events = app.world.resource_mut::<Events<KeyboardInput>>();
+    let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
 
     app.update();
 
-    let mut mouse_events = app.world.resource_mut::<Events<MouseButtonInput>>();
+    let mut mouse_events = app.world_mut().resource_mut::<Events<MouseButtonInput>>();
     mouse_events.send(TEST_MOUSE);
 
     app.update();
-    let mut timestamped_input = app.world.resource_mut::<TimestampedInputs>();
+    let mut timestamped_input = app.world_mut().resource_mut::<TimestampedInputs>();
     let mut iterator = timestamped_input.iter_all().into_iter();
 
     let first_event: TimestampedInputEvent = iterator.next().expect("Keyboard event failed.");
@@ -115,47 +115,47 @@ fn framecount_of_sent_events() {
 fn toggle_input_capture() {
     let mut app = capture_app();
 
-    let mut keyboard_events = app.world.resource_mut::<Events<KeyboardInput>>();
+    let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
     keyboard_events.send(TEST_RELEASE);
 
     app.update();
 
     // Inputs are captured while input capturing is enabled by default
-    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.len(), 2);
 
     // Disabling input capture
-    let mut input_modes_captured = app.world.resource_mut::<InputModesCaptured>();
+    let mut input_modes_captured = app.world_mut().resource_mut::<InputModesCaptured>();
     *input_modes_captured = InputModesCaptured::DISABLE_ALL;
 
-    let mut keyboard_events = app.world.resource_mut::<Events<KeyboardInput>>();
+    let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
     keyboard_events.send(TEST_RELEASE);
 
     app.update();
 
     // Inputs are not captured while input capturing is disabled
-    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.len(), 2);
 
     // Partially re-enabling input capture
-    let mut input_modes_captured = app.world.resource_mut::<InputModesCaptured>();
+    let mut input_modes_captured = app.world_mut().resource_mut::<InputModesCaptured>();
     *input_modes_captured = InputModesCaptured {
         mouse_buttons: false,
         keyboard: true,
         ..Default::default()
     };
 
-    let mut keyboard_events = app.world.resource_mut::<Events<KeyboardInput>>();
+    let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
 
-    let mut mouse_events = app.world.resource_mut::<Events<MouseButtonInput>>();
+    let mut mouse_events = app.world_mut().resource_mut::<Events<MouseButtonInput>>();
     mouse_events.send(TEST_MOUSE);
 
     app.update();
 
     // Only the keyboard events (and app exit events) were captured
-    let timestamped_input = app.world.resource::<TimestampedInputs>();
+    let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.len(), 3);
 }

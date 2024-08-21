@@ -28,7 +28,7 @@ pub struct InputCapturePlugin;
 impl Plugin for InputCapturePlugin {
     fn build(&self, app: &mut App) {
         // Avoid double-adding frame_counter
-        if !app.world.contains_resource::<FrameCount>() {
+        if !app.world().contains_resource::<FrameCount>() {
             app.init_resource::<FrameCount>()
                 .add_systems(First, frame_counter);
         }
