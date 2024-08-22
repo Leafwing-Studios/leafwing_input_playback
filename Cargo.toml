@@ -21,12 +21,12 @@ members = ["./", "tools/ci"]
 default = []
 
 [dependencies]
-bevy = { version = "0.13", default_features = false, features = ["serialize"] }
+bevy = { version = "0.14", default-features = false, features = ["serialize"] }
 serde = { version = "1.0", features = ["derive"] }
 ron = "0.8"
 
 [dev-dependencies]
-bevy = { version = "0.13", default_features = true, features = ["serialize"] }
+bevy = { version = "0.14", default-features = true, features = ["serialize"] }
 smol_str = "0.2"
 
 [lib]

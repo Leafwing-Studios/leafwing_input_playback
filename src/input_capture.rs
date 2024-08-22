@@ -28,7 +28,7 @@ pub struct InputCapturePlugin;
 impl Plugin for InputCapturePlugin {
     fn build(&self, app: &mut App) {
         // Avoid double-adding frame_counter
-        if !app.world.contains_resource::<FrameCount>() {
+        if !app.world().contains_resource::<FrameCount>() {
             app.init_resource::<FrameCount>()
                 .add_systems(First, frame_counter);
         }
@@ -178,6 +178,7 @@ pub fn serialize_timestamped_inputs(
     if let Some(file_path) = playback_file.path() {
         let mut file = OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .open(file_path)
             .expect("Could not open file.");
