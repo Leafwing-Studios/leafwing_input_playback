@@ -41,10 +41,13 @@ impl Plugin for InputCapturePlugin {
                 (
                     // Capture any mocked input as well
                     capture_input,
-                    serialize_captured_input_on_final_capture_frame
-                        .run_if(resource_exists::<FinalCaptureFrame>),
-                    serialize_captured_input_on_end_capture_event,
-                    serialize_captured_input_on_exit,
+                    (
+                        serialize_captured_input_on_final_capture_frame
+                            .run_if(resource_exists::<FinalCaptureFrame>),
+                        serialize_captured_input_on_end_capture_event,
+                        serialize_captured_input_on_exit,
+                    )
+                        .run_if(resource_exists::<PlaybackFilePath>),
                 )
                     .run_if(resource_exists::<InputModesCaptured>)
                     .chain(),
