@@ -3,6 +3,7 @@
 //! These are played back by emulating assorted Bevy input events.
 
 use bevy::app::{App, AppExit, First, Plugin, Startup};
+use bevy::core::FrameCount;
 use bevy::ecs::{prelude::*, system::SystemParam};
 use bevy::input::gamepad::GamepadEvent;
 use bevy::input::{
@@ -16,7 +17,6 @@ use bevy::window::{CursorMoved, Window};
 use ron::de::from_reader;
 use std::fs::File;
 
-use crate::frame_counting::{frame_counter, FrameCount};
 use crate::serde::PlaybackFilePath;
 use crate::timestamped_input::{TimestampedInputEvent, TimestampedInputs};
 
@@ -30,18 +30,15 @@ pub struct InputPlaybackPlugin;
 
 impl Plugin for InputPlaybackPlugin {
     fn build(&self, app: &mut App) {
-        // Avoid double-adding frame_counter
-        if !app.world().contains_resource::<FrameCount>() {
-            app.init_resource::<FrameCount>()
-                .add_systems(First, frame_counter.after(bevy::ecs::event::EventUpdates));
-        }
-
         app.init_resource::<TimestampedInputs>()
             .init_resource::<PlaybackProgress>()
             .init_resource::<PlaybackStrategy>()
             .init_resource::<PlaybackFilePath>()
             .add_systems(Startup, deserialize_timestamped_inputs)
-            .add_systems(First, playback_timestamped_input.after(frame_counter));
+            .add_systems(
+                First,
+                playback_timestamped_input.after(bevy::ecs::event::EventUpdates),
+            );
     }
 }
 
@@ -249,7 +246,7 @@ impl PlaybackProgress {
     ///
     /// Panics if `self.initial_frame` is `None`. Make sure to call `set_initial_frame` first!
     pub fn current_frame(&self, start: FrameCount) -> FrameCount {
-        start + self.elapsed_frames
+        FrameCount(start.0.wrapping_add(self.elapsed_frames.0))
     }
 
     /// Gets the current time.
@@ -265,7 +262,7 @@ impl PlaybackProgress {
     ///
     /// This also records that one frame has elapsed.
     pub fn next_frame(&mut self, start: FrameCount) -> FrameCount {
-        self.elapsed_frames = self.elapsed_frames + FrameCount(1);
+        self.elapsed_frames = FrameCount(self.elapsed_frames.0.wrapping_add(1));
         // The frame count has been advanced, so this returns the correct value
         self.current_frame(start)
     }
@@ -315,7 +312,7 @@ mod tests {
 
         let delta = FrameCount(1);
         let next_frame = progress.next_frame(start);
-        assert_eq!(next_frame, start + delta);
+        assert_eq!(next_frame.0, start.0.wrapping_add(delta.0));
         assert_eq!(progress.elapsed_frames, delta);
     }
 }
