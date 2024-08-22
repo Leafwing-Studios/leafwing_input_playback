@@ -116,7 +116,7 @@ pub fn handle_end_playback_event(
 ///
 /// If this Resource is attached, input events will be forwarded to this window entity rather than the serialized window entity.
 #[derive(Debug, Resource)]
-pub struct PlaybackWindow(Entity);
+pub struct PlaybackWindow(pub Entity);
 
 /// Controls the approach used for playing back recorded inputs
 ///
