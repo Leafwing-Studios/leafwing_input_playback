@@ -7,6 +7,7 @@ use bevy::prelude::*;
 
 use bevy::window::WindowPlugin;
 use leafwing_input_playback::frame_counting::FrameCount;
+use leafwing_input_playback::input_capture::BeginInputCapture;
 use leafwing_input_playback::input_capture::{InputCapturePlugin, InputModesCaptured};
 use leafwing_input_playback::timestamped_input::{
     InputEvent, TimestampedInputEvent, TimestampedInputs,
@@ -41,7 +42,7 @@ fn capture_app() -> App {
         InputPlugin,
         InputCapturePlugin,
     ));
-
+    app.world_mut().send_event(BeginInputCapture::default());
     app
 }
 

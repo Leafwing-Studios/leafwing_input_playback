@@ -13,6 +13,7 @@ use bevy::window::WindowPlugin;
 use leafwing_input_playback::frame_counting::FrameCount;
 use leafwing_input_playback::input_capture::InputCapturePlugin;
 use leafwing_input_playback::input_capture::InputModesCaptured;
+use leafwing_input_playback::input_playback::BeginInputPlayback;
 use leafwing_input_playback::input_playback::InputPlaybackPlugin;
 use leafwing_input_playback::input_playback::PlaybackStrategy;
 use leafwing_input_playback::timestamped_input::TimestampedInputs;
@@ -44,7 +45,10 @@ fn playback_app(strategy: PlaybackStrategy) -> App {
     let mut registry = app.world_mut().resource_mut::<EventRegistry>();
     registry.should_update = ShouldUpdateEvents::Always;
 
-    *app.world_mut().resource_mut::<PlaybackStrategy>() = strategy;
+    app.world_mut().send_event(BeginInputPlayback {
+        playback_strategy: strategy,
+        ..Default::default()
+    });
 
     app
 }
@@ -74,7 +78,7 @@ fn minimal_playback() {
     let input_events = app.world().resource::<Events<KeyboardInput>>();
     assert_eq!(input_events.len(), 0);
 
-    *app.world_mut().resource_mut::<TimestampedInputs>() = simple_timestamped_input();
+    app.insert_resource(simple_timestamped_input());
 
     app.update();
 
@@ -97,6 +101,7 @@ fn capture_and_playback() {
     let mut app = playback_app(PlaybackStrategy::default());
     app.add_plugins(InputCapturePlugin);
     app.insert_resource(PlaybackStrategy::Paused);
+    app.insert_resource(TimestampedInputs::default());
 
     let mut input_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     input_events.send(TEST_PRESS);
@@ -133,7 +138,8 @@ fn repeated_playback() {
     let input_events = app.world().resource::<Events<KeyboardInput>>();
     assert_eq!(input_events.len(), 0);
 
-    *app.world_mut().resource_mut::<TimestampedInputs>() = simple_timestamped_input();
+    app.insert_resource(simple_timestamped_input());
+
     for _ in 1..10 {
         app.update();
     }
@@ -156,7 +162,7 @@ fn repeated_playback() {
 #[test]
 fn playback_strategy_paused() {
     let mut app = playback_app(PlaybackStrategy::Paused);
-    *app.world_mut().resource_mut::<TimestampedInputs>() = complex_timestamped_input();
+    app.insert_resource(complex_timestamped_input());
 
     let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.cursor, 0);
@@ -172,7 +178,7 @@ fn playback_strategy_paused() {
 #[test]
 fn playback_strategy_frame() {
     let mut app = playback_app(PlaybackStrategy::FrameCount);
-    *app.world_mut().resource_mut::<TimestampedInputs>() = complex_timestamped_input();
+    app.insert_resource(complex_timestamped_input());
 
     let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.cursor, 0);
@@ -195,7 +201,7 @@ fn playback_strategy_frame() {
 fn playback_strategy_frame_range_once() {
     let strategy = PlaybackStrategy::FrameRangeOnce(FrameCount(2), FrameCount(5));
     let mut app = playback_app(strategy);
-    *app.world_mut().resource_mut::<TimestampedInputs>() = complex_timestamped_input();
+    app.insert_resource(complex_timestamped_input());
 
     let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.cursor, 0);
@@ -234,7 +240,7 @@ fn playback_strategy_frame_range_once() {
 fn playback_strategy_frame_range_loop() {
     let strategy = PlaybackStrategy::FrameRangeLoop(FrameCount(2), FrameCount(5));
     let mut app = playback_app(strategy);
-    *app.world_mut().resource_mut::<TimestampedInputs>() = complex_timestamped_input();
+    app.insert_resource(complex_timestamped_input());
 
     let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.cursor, 0);
