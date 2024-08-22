@@ -332,11 +332,40 @@ fn send_playback_events(
 /// Reads the stored file paths from the [`PlaybackFilePath`] location (if any)
 pub fn deserialize_timestamped_inputs(
     playback_path: &PlaybackFilePath,
-) -> Option<Result<TimestampedInputs, ron::de::SpannedError>> {
+) -> Option<Result<TimestampedInputs, TimestampedInputsError>> {
     playback_path.path().as_ref().map(|file_path| {
-        let file = File::open(file_path).unwrap();
-        from_reader(file)
+        let file = File::open(file_path).map_err(|error| TimestampedInputsError::Fs(error))?;
+        from_reader(file).map_err(|error| TimestampedInputsError::Ron(error))
     })
+}
+
+/// An error type that wraps the possible error variants when deserializing `TimestampedInputs` from a file.
+#[derive(Debug)]
+pub enum TimestampedInputsError {
+    /// The error case where the filesystem failed to open the desired file path.
+    Fs(std::io::Error),
+    /// The error case where the content at the provided filepath did not have valid RON content.
+    Ron(ron::de::SpannedError),
+}
+
+impl std::fmt::Display for TimestampedInputsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            TimestampedInputsError::Fs(_error) => write!(f, "could not find playback file "),
+            TimestampedInputsError::Ron(_error) => {
+                write!(f, "the provided file did not have valid RON-formatted data")
+            }
+        }
+    }
+}
+
+impl std::error::Error for TimestampedInputsError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match *self {
+            TimestampedInputsError::Fs(ref error) => Some(error),
+            TimestampedInputsError::Ron(ref error) => Some(error),
+        }
+    }
 }
 
 /// How far through the current cycle of input playback we've gotten.
