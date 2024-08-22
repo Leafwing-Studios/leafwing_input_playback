@@ -119,7 +119,7 @@ pub fn initiate_input_playback(
             InputPlaybackSource::TimestampedInputs(inputs) => inputs.clone(),
             InputPlaybackSource::File(playback_path) => {
                 commands.insert_resource(playback_path.clone());
-                deserialize_timestamped_inputs(&playback_path)
+                deserialize_timestamped_inputs(playback_path)
                     .unwrap()
                     .unwrap()
             }
@@ -338,8 +338,8 @@ pub fn deserialize_timestamped_inputs(
     playback_path: &PlaybackFilePath,
 ) -> Option<Result<TimestampedInputs, TimestampedInputsError>> {
     playback_path.path().as_ref().map(|file_path| {
-        let file = File::open(file_path).map_err(|error| TimestampedInputsError::Fs(error))?;
-        from_reader(file).map_err(|error| TimestampedInputsError::Ron(error))
+        let file = File::open(file_path).map_err(TimestampedInputsError::Fs)?;
+        from_reader(file).map_err(TimestampedInputsError::Ron)
     })
 }
 
