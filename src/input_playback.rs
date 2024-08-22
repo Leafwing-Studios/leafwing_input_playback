@@ -40,13 +40,17 @@ impl Plugin for InputPlaybackPlugin {
             .add_event::<EndInputPlayback>()
             .add_systems(
                 First,
-                (handle_end_playback_event, initiate_input_playback).chain(),
+                (handle_end_playback_event, initiate_input_playback)
+                    .after(frame_counter)
+                    .chain(),
             )
             .add_systems(
                 First,
                 playback_timestamped_input
-                    .run_if(resource_exists::<PlaybackProgress>)
-                    .after(frame_counter)
+                    .run_if(
+                        resource_exists::<PlaybackProgress>
+                            .and_then(resource_exists::<TimestampedInputs>),
+                    )
                     .after(initiate_input_playback),
             );
     }
