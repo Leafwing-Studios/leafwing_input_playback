@@ -57,8 +57,8 @@ impl Plugin for InputPlaybackPlugin {
 /// Data is serialized to the provided `filepath` when either an [`EndCaptureEvent`] or an [`AppExit`] event is detected.
 #[derive(Debug, Default, Event)]
 pub struct BeginInputPlayback {
-    /// The filepath at which to serialize captured input data.
-    pub filepath: String,
+    /// The source from which to read input data. Do not provide a `source` if the expected `TimestampedInputs` should already be present in `World`.
+    pub source: Option<InputPlaybackSource>,
     /// Controls the approach used for playing back recorded inputs.
     ///
     /// See [`PlaybackStrategy`] for more information.
@@ -68,26 +68,65 @@ pub struct BeginInputPlayback {
     pub playback_window: Option<Entity>,
 }
 
+/// The source of input data for playback.
+///
+/// Typically users should expect to provide a
+
+#[derive(Debug)]
+pub enum InputPlaybackSource {
+    /// Reads from a file and deserializes the content into a `TimestampedInputs`.
+    File(PlaybackFilePath),
+    /// Uses the provided `TimestampedInputs` parameter as the source of input data.
+    TimestampedInputs(TimestampedInputs),
+}
+
+impl InputPlaybackSource {
+    /// Reads source data from a file using the provided filepath.
+    pub fn from_file(filepath: impl AsRef<String>) -> Self {
+        InputPlaybackSource::File(PlaybackFilePath::new(filepath.as_ref()))
+    }
+
+    /// Defines source data using raw data.
+    pub fn from_inputs(inputs: TimestampedInputs) -> Self {
+        InputPlaybackSource::TimestampedInputs(inputs)
+    }
+}
+
+impl Default for InputPlaybackSource {
+    fn default() -> Self {
+        Self::TimestampedInputs(TimestampedInputs::default())
+    }
+}
+
 /// Initiates input playback when a [`BeginInputPlayback`] is detected.
 pub fn initiate_input_playback(
     mut commands: Commands,
     mut begin_capture_events: EventReader<BeginInputPlayback>,
 ) {
-    if let Some(event) = begin_capture_events.read().next() {
-        commands.init_resource::<TimestampedInputs>();
-        commands.init_resource::<PlaybackProgress>();
-        commands.insert_resource(event.playback_strategy);
-        let playback_path = PlaybackFilePath::new(&event.filepath);
-        if let Some(path) = playback_path.path() {
-            let file = File::open(path).unwrap();
-            let timestamped_inputs: TimestampedInputs = from_reader(file).unwrap();
-            commands.insert_resource(timestamped_inputs);
-        }
-        commands.insert_resource(playback_path);
-        if let Some(playback_window) = event.playback_window {
-            commands.insert_resource(PlaybackWindow(playback_window));
-        }
+    let Some(event) = begin_capture_events.read().next() else {
+        return;
+    };
+
+    commands.init_resource::<PlaybackProgress>();
+    commands.insert_resource(event.playback_strategy);
+
+    if let Some(source) = event.source.as_ref() {
+        let timestamped_inputs = match source {
+            InputPlaybackSource::TimestampedInputs(inputs) => inputs.clone(),
+            InputPlaybackSource::File(playback_path) => {
+                commands.insert_resource(playback_path.clone());
+                deserialize_timestamped_inputs(&playback_path)
+                    .unwrap()
+                    .unwrap()
+            }
+        };
+        commands.insert_resource(timestamped_inputs);
     }
+
+    if let Some(playback_window) = event.playback_window {
+        commands.insert_resource(PlaybackWindow(playback_window));
+    }
+
     begin_capture_events.clear();
 }
 
