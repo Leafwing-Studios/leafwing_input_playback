@@ -1,3 +1,4 @@
+use bevy::core::FrameCount;
 use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::mouse::MouseButtonInput;
@@ -6,7 +7,6 @@ use bevy::input::InputPlugin;
 use bevy::prelude::*;
 
 use bevy::window::WindowPlugin;
-use leafwing_input_playback::frame_counting::FrameCount;
 use leafwing_input_playback::input_capture::{InputCapturePlugin, InputModesCaptured};
 use leafwing_input_playback::timestamped_input::{
     InputEvent, TimestampedInputEvent, TimestampedInputs,
@@ -105,10 +105,8 @@ fn framecount_of_sent_events() {
     let first_event: TimestampedInputEvent = iterator.next().expect("Keyboard event failed.");
     let second_event: TimestampedInputEvent = iterator.next().expect("Mouse event failed.");
 
-    // The frame count is recorded based on the frame it is read,
-    // which counts up immediately
-    assert_eq!(first_event.frame, FrameCount(1));
-    assert_eq!(second_event.frame, FrameCount(2));
+    assert_eq!(first_event.frame, FrameCount(0));
+    assert_eq!(second_event.frame, FrameCount(1));
 }
 
 #[test]

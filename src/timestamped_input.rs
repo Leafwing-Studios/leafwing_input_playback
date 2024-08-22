@@ -3,6 +3,7 @@
 //! Those timestamped events are finally stored inside of a [`TimestampedInputs`] resource, which should be used for input capture and playback.
 
 use bevy::app::AppExit;
+use bevy::core::FrameCount;
 use bevy::ecs::prelude::*;
 use bevy::input::gamepad::GamepadEvent;
 use bevy::input::keyboard::KeyboardInput;
@@ -10,8 +11,6 @@ use bevy::input::mouse::{MouseButtonInput, MouseWheel};
 use bevy::utils::Duration;
 use bevy::window::CursorMoved;
 use serde::{Deserialize, Serialize};
-
-use crate::frame_counting::FrameCount;
 
 /// A timestamped device-agnostic user-input event
 ///

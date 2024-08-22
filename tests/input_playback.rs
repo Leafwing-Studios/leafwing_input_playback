@@ -1,5 +1,6 @@
 // BLOCKED: add time strategy tests: https://github.com/bevyengine/bevy/issues/6146
 
+use bevy::core::FrameCount;
 use bevy::ecs::event::EventRegistry;
 use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
@@ -10,7 +11,6 @@ use bevy::time::TimeUpdateStrategy;
 use bevy::utils::Duration;
 use bevy::window::WindowPlugin;
 
-use leafwing_input_playback::frame_counting::FrameCount;
 use leafwing_input_playback::input_capture::InputCapturePlugin;
 use leafwing_input_playback::input_capture::InputModesCaptured;
 use leafwing_input_playback::input_playback::InputPlaybackPlugin;
@@ -51,8 +51,8 @@ fn playback_app(strategy: PlaybackStrategy) -> App {
 
 fn simple_timestamped_input() -> TimestampedInputs {
     let mut inputs = TimestampedInputs::default();
-    inputs.send(FrameCount(1), Duration::from_secs(0), TEST_PRESS.into());
-    inputs.send(FrameCount(2), Duration::from_secs(0), TEST_RELEASE.into());
+    inputs.send(FrameCount(0), Duration::from_secs(0), TEST_PRESS.into());
+    inputs.send(FrameCount(1), Duration::from_secs(0), TEST_RELEASE.into());
 
     inputs
 }
@@ -178,6 +178,10 @@ fn playback_strategy_frame() {
     assert_eq!(timestamped_input.cursor, 0);
 
     // Check complex_timestamped_input to verify the pattern
+    app.update();
+    let timestamped_input = app.world().resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.cursor, 1);
+
     app.update();
     let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.cursor, 2);

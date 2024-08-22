@@ -2,7 +2,8 @@
 //!
 //! These are unified into a single [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource, which can be played back.
 
-use bevy::app::{App, AppExit, First, Last, Plugin};
+use bevy::app::{App, AppExit, Last, Plugin};
+use bevy::core::{update_frame_count, FrameCount};
 use bevy::ecs::prelude::*;
 use bevy::input::gamepad::GamepadEvent;
 use bevy::input::keyboard::KeyboardInput;
@@ -11,7 +12,6 @@ use bevy::time::Time;
 use bevy::window::CursorMoved;
 use ron::ser::PrettyConfig;
 
-use crate::frame_counting::{frame_counter, FrameCount};
 use crate::serde::PlaybackFilePath;
 use crate::timestamped_input::TimestampedInputs;
 use std::fs::OpenOptions;
@@ -27,12 +27,6 @@ pub struct InputCapturePlugin;
 
 impl Plugin for InputCapturePlugin {
     fn build(&self, app: &mut App) {
-        // Avoid double-adding frame_counter
-        if !app.world().contains_resource::<FrameCount>() {
-            app.init_resource::<FrameCount>()
-                .add_systems(First, frame_counter);
-        }
-
         app.init_resource::<TimestampedInputs>()
             .init_resource::<InputModesCaptured>()
             .init_resource::<PlaybackFilePath>()
@@ -43,7 +37,8 @@ impl Plugin for InputCapturePlugin {
                     capture_input,
                     serialize_captured_input_on_exit,
                 )
-                    .chain(),
+                    .chain()
+                    .before(update_frame_count),
             );
     }
 }
