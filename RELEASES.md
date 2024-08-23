@@ -1,5 +1,10 @@
 # Release Notes
 
+## Version 0.6 (Draft)
+
+- migrated to Bevy 0.14
+- replaced `FrameCount` with its Bevy counterpart and updated system scheduling constraints to match the new `FrameCount`'s behavior, which updates in `Last` rather than `First`
+
 ## Version 0.5
 
 - migrated to Bevy 0.13

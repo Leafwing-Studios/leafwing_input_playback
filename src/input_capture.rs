@@ -3,6 +3,7 @@
 //! These are unified into a single [`TimestampedInputs`](crate::timestamped_input::TimestampedInputs) resource, which can be played back.
 
 use bevy::app::{App, AppExit, First, Last, Plugin};
+use bevy::core::{update_frame_count, FrameCount};
 use bevy::ecs::prelude::*;
 use bevy::input::gamepad::GamepadEvent;
 use bevy::input::keyboard::KeyboardInput;
@@ -11,7 +12,6 @@ use bevy::time::Time;
 use bevy::window::CursorMoved;
 use ron::ser::PrettyConfig;
 
-use crate::frame_counting::{frame_counter, FrameCount};
 use crate::serde::PlaybackFilePath;
 use crate::timestamped_input::TimestampedInputs;
 use std::fs::OpenOptions;
@@ -27,12 +27,6 @@ pub struct InputCapturePlugin;
 
 impl Plugin for InputCapturePlugin {
     fn build(&self, app: &mut App) {
-        // Avoid double-adding frame_counter
-        if !app.world().contains_resource::<FrameCount>() {
-            app.init_resource::<FrameCount>()
-                .add_systems(First, frame_counter);
-        }
-
         app.add_event::<BeginInputCapture>()
             .add_event::<EndInputCapture>()
             .add_systems(First, initiate_input_capture)
@@ -50,7 +44,8 @@ impl Plugin for InputCapturePlugin {
                         .run_if(resource_exists::<PlaybackFilePath>),
                 )
                     .run_if(resource_exists::<InputModesCaptured>)
-                    .chain(),
+                    .chain()
+                    .before(update_frame_count),
             );
     }
 }
@@ -146,7 +141,9 @@ pub fn initiate_input_capture(
             commands.init_resource::<PlaybackFilePath>();
         }
         if let Some(final_frame) = event.frames_to_capture {
-            commands.insert_resource(FinalCaptureFrame(*frame_count + final_frame));
+            commands.insert_resource(FinalCaptureFrame(FrameCount(
+                frame_count.0.wrapping_add(final_frame.0),
+            )));
         }
         if let Some(window_entity) = &event.window_to_capture {
             commands.insert_resource(InputCaptureWindow(*window_entity));
