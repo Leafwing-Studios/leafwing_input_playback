@@ -2,7 +2,7 @@
 //!
 //! These are played back by emulating assorted Bevy input events.
 
-use bevy::app::{App, AppExit, First, Plugin, Startup};
+use bevy::app::{App, AppExit, First, Plugin};
 use bevy::core::FrameCount;
 use bevy::ecs::{prelude::*, system::SystemParam};
 use bevy::input::gamepad::GamepadEvent;
@@ -30,17 +30,130 @@ pub struct InputPlaybackPlugin;
 
 impl Plugin for InputPlaybackPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<TimestampedInputs>()
-            .init_resource::<PlaybackProgress>()
-            .init_resource::<PlaybackStrategy>()
-            .init_resource::<PlaybackFilePath>()
-            .add_systems(Startup, deserialize_timestamped_inputs)
+        app.add_event::<BeginInputPlayback>()
+            .add_event::<EndInputPlayback>()
             .add_systems(
                 First,
-                playback_timestamped_input.after(bevy::ecs::event::EventUpdates),
+                (handle_end_playback_event, initiate_input_playback)
+                    .chain()
+                    .after(bevy::ecs::event::EventUpdates),
+            )
+            .add_systems(
+                First,
+                playback_timestamped_input
+                    .run_if(
+                        resource_exists::<PlaybackProgress>
+                            .and_then(resource_exists::<TimestampedInputs>),
+                    )
+                    .after(initiate_input_playback),
             );
     }
 }
+
+/// An Event that users can send to initiate input capture.
+///
+/// Data is serialized to the provided `filepath` when either an [`EndCaptureEvent`] or an [`AppExit`] event is detected.
+#[derive(Debug, Default, Event)]
+pub struct BeginInputPlayback {
+    /// The source from which to read input data. Do not provide a `source` if the expected `TimestampedInputs` should already be present in `World`.
+    pub source: Option<InputPlaybackSource>,
+    /// Controls the approach used for playing back recorded inputs.
+    ///
+    /// See [`PlaybackStrategy`] for more information.
+    pub playback_strategy: PlaybackStrategy,
+    /// A entity corresponding to the [`bevy::window::Window`] which will receive input events.
+    /// If unspecified, input events will target the serialized window entity, which may be fragile.
+    pub playback_window: Option<Entity>,
+}
+
+/// The source of input data for playback.
+///
+/// Typically users should expect to provide a
+
+#[derive(Debug)]
+pub enum InputPlaybackSource {
+    /// Reads from a file and deserializes the content into a `TimestampedInputs`.
+    File(PlaybackFilePath),
+    /// Uses the provided `TimestampedInputs` parameter as the source of input data.
+    TimestampedInputs(TimestampedInputs),
+}
+
+impl InputPlaybackSource {
+    /// Reads source data from a file using the provided filepath.
+    pub fn from_file(filepath: impl AsRef<String>) -> Self {
+        InputPlaybackSource::File(PlaybackFilePath::new(filepath.as_ref()))
+    }
+
+    /// Defines source data using raw data.
+    pub fn from_inputs(inputs: TimestampedInputs) -> Self {
+        InputPlaybackSource::TimestampedInputs(inputs)
+    }
+}
+
+impl Default for InputPlaybackSource {
+    fn default() -> Self {
+        Self::TimestampedInputs(TimestampedInputs::default())
+    }
+}
+
+/// Initiates input playback when a [`BeginInputPlayback`] is detected.
+pub fn initiate_input_playback(
+    mut commands: Commands,
+    mut begin_capture_events: EventReader<BeginInputPlayback>,
+) {
+    let Some(event) = begin_capture_events.read().next() else {
+        return;
+    };
+
+    commands.init_resource::<PlaybackProgress>();
+    commands.insert_resource(event.playback_strategy);
+
+    if let Some(source) = event.source.as_ref() {
+        let timestamped_inputs = match source {
+            InputPlaybackSource::TimestampedInputs(inputs) => inputs.clone(),
+            InputPlaybackSource::File(playback_path) => {
+                commands.insert_resource(playback_path.clone());
+                deserialize_timestamped_inputs(playback_path)
+                    .unwrap()
+                    .unwrap()
+            }
+        };
+        commands.insert_resource(timestamped_inputs);
+    }
+
+    if let Some(playback_window) = event.playback_window {
+        commands.insert_resource(PlaybackWindow(playback_window));
+    }
+
+    begin_capture_events.clear();
+}
+
+/// An Event that users can send to end input playback prematurely.
+#[derive(Debug, Event)]
+pub struct EndInputPlayback;
+
+/// Serializes captured input to the path given in the [`PlaybackFilePath`] resource when an [`EndInputCapture`] is detected.
+///
+/// Use the [`serialized_timestamped_inputs`] function directly if you want to implement custom checkpointing strategies.
+pub fn handle_end_playback_event(
+    mut commands: Commands,
+    mut end_capture_events: EventReader<EndInputPlayback>,
+) {
+    if !end_capture_events.is_empty() {
+        end_capture_events.clear();
+        commands.remove_resource::<PlaybackFilePath>();
+        commands.remove_resource::<TimestampedInputs>();
+        commands.remove_resource::<PlaybackProgress>();
+        commands.remove_resource::<PlaybackStrategy>();
+        commands.remove_resource::<PlaybackWindow>();
+    }
+}
+
+/// The `Window` entity for which inputs will be captured.
+///
+/// If this Resource is attached, input events will be forwarded to this window entity rather than the serialized window entity.
+#[derive(Debug, Resource)]
+pub struct PlaybackWindow(pub Entity);
 
 /// Controls the approach used for playing back recorded inputs
 ///
@@ -216,12 +329,40 @@ fn send_playback_events(
 
 /// Reads the stored file paths from the [`PlaybackFilePath`] location (if any)
 pub fn deserialize_timestamped_inputs(
-    mut timestamped_inputs: ResMut<TimestampedInputs>,
-    playback_path: Res<PlaybackFilePath>,
-) {
-    if let Some(file_path) = playback_path.path() {
-        let file = File::open(file_path).unwrap();
-        *timestamped_inputs = from_reader(file).unwrap();
+    playback_path: &PlaybackFilePath,
+) -> Option<Result<TimestampedInputs, TimestampedInputsError>> {
+    playback_path.path().as_ref().map(|file_path| {
+        let file = File::open(file_path).map_err(TimestampedInputsError::Fs)?;
+        from_reader(file).map_err(TimestampedInputsError::Ron)
+    })
+}
+
+/// An error type that wraps the possible error variants when deserializing `TimestampedInputs` from a file.
+#[derive(Debug)]
+pub enum TimestampedInputsError {
+    /// The error case where the filesystem failed to open the desired file path.
+    Fs(std::io::Error),
+    /// The error case where the content at the provided filepath did not have valid RON content.
+    Ron(ron::de::SpannedError),
+}
+
+impl std::fmt::Display for TimestampedInputsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            TimestampedInputsError::Fs(_error) => write!(f, "could not find playback file "),
+            TimestampedInputsError::Ron(_error) => {
+                write!(f, "the provided file did not have valid RON-formatted data")
+            }
+        }
+    }
+}
+
+impl std::error::Error for TimestampedInputsError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match *self {
+            TimestampedInputsError::Fs(ref error) => Some(error),
+            TimestampedInputsError::Ron(ref error) => Some(error),
+        }
     }
 }
 
