@@ -7,8 +7,10 @@ use bevy::input::InputPlugin;
 use bevy::prelude::*;
 use bevy::window::WindowPlugin;
 
-use leafwing_input_playback::input_capture::BeginInputCapture;
-use leafwing_input_playback::input_capture::{InputCapturePlugin, InputModesCaptured};
+use leafwing_input_playback::input_capture::EndInputCapture;
+use leafwing_input_playback::input_capture::{
+    BeginInputCapture, InputCapturePlugin, InputModesCaptured,
+};
 use leafwing_input_playback::timestamped_input::{
     InputEvent, TimestampedInputEvent, TimestampedInputs,
 };
@@ -42,13 +44,13 @@ fn capture_app() -> App {
         InputPlugin,
         InputCapturePlugin,
     ));
-    app.world_mut().send_event(BeginInputCapture::default());
     app
 }
 
 #[test]
 fn capture_sent_events() {
     let mut app = capture_app();
+    app.world_mut().trigger(BeginInputCapture::default());
 
     let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
@@ -62,6 +64,7 @@ fn capture_sent_events() {
 #[test]
 fn identity_of_sent_events() {
     let mut app = capture_app();
+    app.world_mut().trigger(BeginInputCapture::default());
 
     let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
@@ -90,6 +93,7 @@ fn identity_of_sent_events() {
 #[test]
 fn framecount_of_sent_events() {
     let mut app = capture_app();
+    app.world_mut().trigger(BeginInputCapture::default());
 
     let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
@@ -113,6 +117,7 @@ fn framecount_of_sent_events() {
 #[test]
 fn toggle_input_capture() {
     let mut app = capture_app();
+    app.world_mut().trigger(BeginInputCapture::default());
 
     let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     keyboard_events.send(TEST_PRESS);
@@ -157,4 +162,51 @@ fn toggle_input_capture() {
     // Only the keyboard events (and app exit events) were captured
     let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.len(), 3);
+}
+
+#[test]
+fn end_input_capture() {
+    let mut app = capture_app();
+    app.world_mut().trigger(BeginInputCapture::default());
+
+    let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
+    keyboard_events.send(TEST_PRESS);
+
+    app.update();
+
+    // Inputs are captured while input capturing is enabled by default
+    let timestamped_input = app.world().resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.len(), 1);
+
+    // End input capture
+    app.world_mut().trigger(EndInputCapture);
+
+    let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
+    keyboard_events.send(TEST_RELEASE);
+
+    app.update();
+
+    // Inputs are not captured once capture is ended.
+    // Since we have not provided a file path, TimestampedInputs remains.
+    let timestamped_input = app.world().resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.len(), 1);
+
+    // Beginning capture again also works.
+    app.world_mut().trigger(BeginInputCapture::default());
+
+    app.update();
+
+    // The previous results have not been overwritten.
+    let timestamped_input = app.world().resource::<TimestampedInputs>();
+    eprintln!("{timestamped_input:?}");
+    assert_eq!(timestamped_input.len(), 1);
+
+    let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
+    keyboard_events.send(TEST_RELEASE);
+
+    app.update();
+
+    // New inputs are still accepted.
+    let timestamped_input = app.world().resource::<TimestampedInputs>();
+    assert_eq!(timestamped_input.len(), 2);
 }
