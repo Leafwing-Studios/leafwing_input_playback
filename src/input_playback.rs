@@ -5,8 +5,8 @@
 use bevy::app::{App, AppExit, First, Plugin};
 use bevy::core::FrameCount;
 use bevy::ecs::{prelude::*, system::SystemParam};
-use bevy::input::gamepad::GamepadEvent;
 use bevy::input::{
+    gamepad::GamepadEvent,
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
 };
@@ -30,14 +30,8 @@ pub struct InputPlaybackPlugin;
 
 impl Plugin for InputPlaybackPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<BeginInputPlayback>()
-            .add_event::<EndInputPlayback>()
-            .add_systems(
-                First,
-                (handle_end_playback_event, initiate_input_playback)
-                    .chain()
-                    .after(bevy::ecs::event::EventUpdates),
-            )
+        app.observe(BeginInputPlayback::observer)
+            .observe(EndInputPlayback::observer)
             .add_systems(
                 First,
                 playback_timestamped_input
@@ -45,7 +39,7 @@ impl Plugin for InputPlaybackPlugin {
                         resource_exists::<PlaybackProgress>
                             .and_then(resource_exists::<TimestampedInputs>),
                     )
-                    .after(initiate_input_playback),
+                    .after(bevy::ecs::event::EventUpdates),
             );
     }
 }
@@ -66,10 +60,35 @@ pub struct BeginInputPlayback {
     pub playback_window: Option<Entity>,
 }
 
+impl BeginInputPlayback {
+    /// Initiates input playback and deserializes timestamped inputs from the provided playback source.
+    pub fn observer(trigger: Trigger<BeginInputPlayback>, mut commands: Commands) {
+        let event = trigger.event();
+        commands.init_resource::<PlaybackProgress>();
+        commands.insert_resource(event.playback_strategy);
+
+        if let Some(source) = event.source.as_ref() {
+            let timestamped_inputs = match source {
+                InputPlaybackSource::TimestampedInputs(inputs) => inputs.clone(),
+                InputPlaybackSource::File(playback_path) => {
+                    commands.insert_resource(playback_path.clone());
+                    deserialize_timestamped_inputs(playback_path)
+                        .unwrap()
+                        .unwrap()
+                }
+            };
+            commands.insert_resource(timestamped_inputs);
+        }
+
+        if let Some(playback_window) = event.playback_window {
+            commands.insert_resource(PlaybackWindow(playback_window));
+        }
+    }
+}
+
 /// The source of input data for playback.
 ///
-/// Typically users should expect to provide a
-
+/// Typically users should expect to provide a FilePath, but `TimestampedInputs` can still be provided manually.
 #[derive(Debug)]
 pub enum InputPlaybackSource {
     /// Reads from a file and deserializes the content into a `TimestampedInputs`.
@@ -96,51 +115,15 @@ impl Default for InputPlaybackSource {
     }
 }
 
-/// Initiates input playback when a [`BeginInputPlayback`] is detected.
-pub fn initiate_input_playback(
-    mut commands: Commands,
-    mut begin_capture_events: EventReader<BeginInputPlayback>,
-) {
-    let Some(event) = begin_capture_events.read().next() else {
-        return;
-    };
-
-    commands.init_resource::<PlaybackProgress>();
-    commands.insert_resource(event.playback_strategy);
-
-    if let Some(source) = event.source.as_ref() {
-        let timestamped_inputs = match source {
-            InputPlaybackSource::TimestampedInputs(inputs) => inputs.clone(),
-            InputPlaybackSource::File(playback_path) => {
-                commands.insert_resource(playback_path.clone());
-                deserialize_timestamped_inputs(playback_path)
-                    .unwrap()
-                    .unwrap()
-            }
-        };
-        commands.insert_resource(timestamped_inputs);
-    }
-
-    if let Some(playback_window) = event.playback_window {
-        commands.insert_resource(PlaybackWindow(playback_window));
-    }
-
-    begin_capture_events.clear();
-}
-
 /// An Event that users can send to end input playback prematurely.
 #[derive(Debug, Event)]
 pub struct EndInputPlayback;
 
-/// Serializes captured input to the path given in the [`PlaybackFilePath`] resource when an [`EndInputCapture`] is detected.
-///
-/// Use the [`serialized_timestamped_inputs`] function directly if you want to implement custom checkpointing strategies.
-pub fn handle_end_playback_event(
-    mut commands: Commands,
-    mut end_capture_events: EventReader<EndInputPlayback>,
-) {
-    if !end_capture_events.is_empty() {
-        end_capture_events.clear();
+impl EndInputPlayback {
+    /// Serializes captured input to the path given in the [`PlaybackFilePath`] resource when an [`EndInputCapture`] is detected.
+    ///
+    /// Use the [`serialized_timestamped_inputs`] function directly if you want to implement custom checkpointing strategies.
+    fn observer(_trigger: Trigger<EndInputPlayback>, mut commands: Commands) {
         commands.remove_resource::<PlaybackFilePath>();
         commands.remove_resource::<TimestampedInputs>();
         commands.remove_resource::<PlaybackProgress>();
@@ -294,7 +277,9 @@ fn send_playback_events(
     timestamped_input_events: impl IntoIterator<Item = TimestampedInputEvent>,
     input_writers: &mut InputWriters,
 ) {
+    eprintln!("Adding events:");
     for timestamped_input_event in timestamped_input_events {
+        eprintln!("{timestamped_input_event:?}");
         use crate::timestamped_input::InputEvent::*;
         match timestamped_input_event.input_event {
             Keyboard(e) => {
