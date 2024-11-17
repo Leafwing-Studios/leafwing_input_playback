@@ -283,8 +283,7 @@ fn playback_strategy_frame_range_loop() {
         source: Some(InputPlaybackSource::from_inputs(complex_timestamped_input())),
         ..Default::default()
     });
-
-    app.update();
+    app.world_mut().flush_commands();
 
     let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.cursor, 0);
