@@ -88,7 +88,7 @@ impl BeginInputPlayback {
 
 /// The source of input data for playback.
 ///
-/// Typically users should expect to provide a FilePath, but `TimestampedInputs` can still be provided manually.
+/// Typically users should expect to provide a `FilePath`, but `TimestampedInputs` can still be provided manually.
 #[derive(Debug)]
 pub enum InputPlaybackSource {
     /// Reads from a file and deserializes the content into a `TimestampedInputs`.

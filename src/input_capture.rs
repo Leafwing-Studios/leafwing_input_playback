@@ -84,7 +84,7 @@ impl BeginInputCapture {
 pub struct EndInputCapture;
 
 impl EndInputCapture {
-    /// An ObserverSystem for `EndInputCapture` that removes all capture-related resources and serializes timestamps if `PlaybackFilePath` exists
+    /// An `ObserverSystem` for `EndInputCapture` that removes all capture-related resources and serializes timestamps if `PlaybackFilePath` exists
     pub fn observer(
         _trigger: Trigger<Self>,
         mut commands: Commands,
