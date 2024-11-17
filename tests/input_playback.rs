@@ -43,8 +43,8 @@ fn playback_app() -> App {
         InputPlaybackPlugin,
     ));
 
-    let mut event_registry = app.world_mut().resource_mut::<EventRegistry>();
-    event_registry.should_update = ShouldUpdateEvents::Always;
+    let mut registry = app.world_mut().resource_mut::<EventRegistry>();
+    registry.should_update = ShouldUpdateEvents::Always;
 
     app
 }
