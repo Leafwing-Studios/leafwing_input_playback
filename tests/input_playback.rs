@@ -1,6 +1,7 @@
 // BLOCKED: add time strategy tests: https://github.com/bevyengine/bevy/issues/6146
 
 use bevy::core::FrameCount;
+use bevy::ecs::event::EventRegistry;
 use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
@@ -41,6 +42,9 @@ fn playback_app() -> App {
         InputPlugin,
         InputPlaybackPlugin,
     ));
+
+    let mut event_registry = app.world_mut().resource_mut::<EventRegistry>();
+    event_registry.should_update = ShouldUpdateEvents::Always;
 
     app
 }
