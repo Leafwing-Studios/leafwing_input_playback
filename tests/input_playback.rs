@@ -247,20 +247,17 @@ fn playback_strategy_frame_range_once() {
     app.update();
 
     let input_events = app.world().resource::<Events<KeyboardInput>>();
-    eprintln!("{input_events:?}");
     assert_eq!(input_events.len(), 2);
 
     // Frame 3 (events are double buffered)
     app.update();
     let input_events = app.world().resource::<Events<KeyboardInput>>();
-    eprintln!("{input_events:?}");
     assert_eq!(input_events.len(), 3);
 
     // Frame 4 (events are double buffered)
     app.update();
     let input_events = app.world().resource::<Events<KeyboardInput>>();
     assert_eq!(*app.world().resource::<PlaybackStrategy>(), strategy);
-    eprintln!("{input_events:?}");
     assert_eq!(input_events.len(), 1);
 
     // Paused

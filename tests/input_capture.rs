@@ -198,7 +198,6 @@ fn end_input_capture() {
 
     // The previous results have not been overwritten.
     let timestamped_input = app.world().resource::<TimestampedInputs>();
-    eprintln!("{timestamped_input:?}");
     assert_eq!(timestamped_input.len(), 1);
 
     let mut keyboard_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();

@@ -277,9 +277,7 @@ fn send_playback_events(
     timestamped_input_events: impl IntoIterator<Item = TimestampedInputEvent>,
     input_writers: &mut InputWriters,
 ) {
-    eprintln!("Adding events:");
     for timestamped_input_event in timestamped_input_events {
-        eprintln!("{timestamped_input_event:?}");
         use crate::timestamped_input::InputEvent::*;
         match timestamped_input_event.input_event {
             Keyboard(e) => {
