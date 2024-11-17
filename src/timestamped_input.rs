@@ -420,31 +420,11 @@ mod tests {
 
     fn complex_timestamped_input() -> TimestampedInputs {
         let mut inputs = TimestampedInputs::default();
-        inputs.send(
-            FrameCount(0),
-            Duration::from_secs(0),
-            LEFT_CLICK_PRESS,
-        );
-        inputs.send(
-            FrameCount(1),
-            Duration::from_secs(1),
-            LEFT_CLICK_RELEASE,
-        );
-        inputs.send(
-            FrameCount(2),
-            Duration::from_secs(2),
-            LEFT_CLICK_PRESS,
-        );
-        inputs.send(
-            FrameCount(2),
-            Duration::from_secs(3),
-            LEFT_CLICK_PRESS,
-        );
-        inputs.send(
-            FrameCount(3),
-            Duration::from_secs(3),
-            LEFT_CLICK_PRESS,
-        );
+        inputs.send(FrameCount(0), Duration::from_secs(0), LEFT_CLICK_PRESS);
+        inputs.send(FrameCount(1), Duration::from_secs(1), LEFT_CLICK_RELEASE);
+        inputs.send(FrameCount(2), Duration::from_secs(2), LEFT_CLICK_PRESS);
+        inputs.send(FrameCount(2), Duration::from_secs(3), LEFT_CLICK_PRESS);
+        inputs.send(FrameCount(3), Duration::from_secs(3), LEFT_CLICK_PRESS);
 
         inputs
     }
