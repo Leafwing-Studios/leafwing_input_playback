@@ -1,268 +1,311 @@
 (
     events: [
         (
-            frame: (116),
+            frame: 72,
+            time_since_startup: (
+                secs: 1,
+                nanos: 171552588,
+            ),
+            input_event: Keyboard((
+                key_code: KeyH,
+                logical_key: Character("h"),
+                state: Pressed,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 76,
+            time_since_startup: (
+                secs: 1,
+                nanos: 237682433,
+            ),
+            input_event: Keyboard((
+                key_code: KeyE,
+                logical_key: Character("e"),
+                state: Pressed,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 79,
+            time_since_startup: (
+                secs: 1,
+                nanos: 287808619,
+            ),
+            input_event: Keyboard((
+                key_code: KeyH,
+                logical_key: Character("h"),
+                state: Released,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 83,
+            time_since_startup: (
+                secs: 1,
+                nanos: 354264132,
+            ),
+            input_event: Keyboard((
+                key_code: KeyE,
+                logical_key: Character("e"),
+                state: Released,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 84,
+            time_since_startup: (
+                secs: 1,
+                nanos: 371552096,
+            ),
+            input_event: Keyboard((
+                key_code: KeyL,
+                logical_key: Character("l"),
+                state: Pressed,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 87,
+            time_since_startup: (
+                secs: 1,
+                nanos: 420491538,
+            ),
+            input_event: Keyboard((
+                key_code: KeyL,
+                logical_key: Character("l"),
+                state: Released,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 91,
+            time_since_startup: (
+                secs: 1,
+                nanos: 487469805,
+            ),
+            input_event: Keyboard((
+                key_code: KeyL,
+                logical_key: Character("l"),
+                state: Pressed,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 97,
+            time_since_startup: (
+                secs: 1,
+                nanos: 587663589,
+            ),
+            input_event: Keyboard((
+                key_code: KeyL,
+                logical_key: Character("l"),
+                state: Released,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 102,
+            time_since_startup: (
+                secs: 1,
+                nanos: 670926111,
+            ),
+            input_event: Keyboard((
+                key_code: KeyO,
+                logical_key: Character("o"),
+                state: Pressed,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 108,
+            time_since_startup: (
+                secs: 1,
+                nanos: 770864645,
+            ),
+            input_event: Keyboard((
+                key_code: KeyO,
+                logical_key: Character("o"),
+                state: Released,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 126,
             time_since_startup: (
                 secs: 2,
-                nanos: 380259200,
+                nanos: 70705952,
             ),
             input_event: Keyboard((
-                scan_code: 35,
-                key_code: Some(H),
+                key_code: Space,
+                logical_key: Space,
                 state: Pressed,
+                window: 4294967296,
             )),
         ),
         (
-            frame: (120),
+            frame: 130,
             time_since_startup: (
                 secs: 2,
-                nanos: 446911200,
+                nanos: 137360743,
             ),
             input_event: Keyboard((
-                scan_code: 35,
-                key_code: Some(H),
+                key_code: Space,
+                logical_key: Space,
                 state: Released,
+                window: 4294967296,
             )),
         ),
         (
-            frame: (177),
+            frame: 131,
             time_since_startup: (
-                secs: 3,
-                nanos: 396952300,
+                secs: 2,
+                nanos: 154046279,
             ),
             input_event: Keyboard((
-                scan_code: 18,
-                key_code: Some(E),
+                key_code: KeyW,
+                logical_key: Character("w"),
                 state: Pressed,
+                window: 4294967296,
             )),
         ),
         (
-            frame: (180),
+            frame: 135,
             time_since_startup: (
-                secs: 3,
-                nanos: 446934100,
+                secs: 2,
+                nanos: 220650318,
             ),
             input_event: Keyboard((
-                scan_code: 18,
-                key_code: Some(E),
+                key_code: KeyW,
+                logical_key: Character("w"),
                 state: Released,
+                window: 4294967296,
             )),
         ),
         (
-            frame: (220),
+            frame: 140,
             time_since_startup: (
-                secs: 4,
-                nanos: 113641400,
+                secs: 2,
+                nanos: 303982817,
             ),
             input_event: Keyboard((
-                scan_code: 38,
-                key_code: Some(L),
+                key_code: KeyO,
+                logical_key: Character("o"),
                 state: Pressed,
+                window: 4294967296,
             )),
         ),
         (
-            frame: (224),
+            frame: 142,
             time_since_startup: (
-                secs: 4,
-                nanos: 180281900,
+                secs: 2,
+                nanos: 337671183,
             ),
             input_event: Keyboard((
-                scan_code: 38,
-                key_code: Some(L),
-                state: Released,
-            )),
-        ),
-        (
-            frame: (249),
-            time_since_startup: (
-                secs: 4,
-                nanos: 596947200,
-            ),
-            input_event: Keyboard((
-                scan_code: 38,
-                key_code: Some(L),
+                key_code: KeyR,
+                logical_key: Character("r"),
                 state: Pressed,
+                window: 4294967296,
             )),
         ),
         (
-            frame: (255),
+            frame: 145,
             time_since_startup: (
-                secs: 4,
-                nanos: 697010200,
+                secs: 2,
+                nanos: 386928375,
             ),
             input_event: Keyboard((
-                scan_code: 38,
-                key_code: Some(L),
+                key_code: KeyO,
+                logical_key: Character("o"),
                 state: Released,
+                window: 4294967296,
             )),
         ),
         (
-            frame: (285),
+            frame: 146,
             time_since_startup: (
-                secs: 5,
-                nanos: 197035600,
+                secs: 2,
+                nanos: 402879424,
             ),
             input_event: Keyboard((
-                scan_code: 24,
-                key_code: Some(O),
+                key_code: KeyR,
+                logical_key: Character("r"),
+                state: Released,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 150,
+            time_since_startup: (
+                secs: 2,
+                nanos: 470161663,
+            ),
+            input_event: Keyboard((
+                key_code: KeyL,
+                logical_key: Character("l"),
                 state: Pressed,
+                window: 4294967296,
             )),
         ),
         (
-            frame: (290),
+            frame: 151,
             time_since_startup: (
-                secs: 5,
-                nanos: 280284800,
+                secs: 2,
+                nanos: 486047197,
             ),
             input_event: Keyboard((
-                scan_code: 24,
-                key_code: Some(O),
-                state: Released,
-            )),
-        ),
-        (
-            frame: (316),
-            time_since_startup: (
-                secs: 5,
-                nanos: 713653300,
-            ),
-            input_event: Keyboard((
-                scan_code: 57,
-                key_code: Some(Space),
+                key_code: KeyD,
+                logical_key: Character("d"),
                 state: Pressed,
+                window: 4294967296,
             )),
         ),
         (
-            frame: (321),
+            frame: 154,
             time_since_startup: (
-                secs: 5,
-                nanos: 796981700,
+                secs: 2,
+                nanos: 536300612,
             ),
             input_event: Keyboard((
-                scan_code: 57,
-                key_code: Some(Space),
+                key_code: KeyL,
+                logical_key: Character("l"),
                 state: Released,
+                window: 4294967296,
             )),
         ),
         (
-            frame: (346),
+            frame: 156,
             time_since_startup: (
-                secs: 6,
-                nanos: 213645600,
+                secs: 2,
+                nanos: 569849084,
             ),
             input_event: Keyboard((
-                scan_code: 17,
-                key_code: Some(W),
+                key_code: KeyD,
+                logical_key: Character("d"),
+                state: Released,
+                window: 4294967296,
+            )),
+        ),
+        (
+            frame: 161,
+            time_since_startup: (
+                secs: 2,
+                nanos: 653288844,
+            ),
+            input_event: Keyboard((
+                key_code: AltLeft,
+                logical_key: Alt,
                 state: Pressed,
+                window: 4294967296,
             )),
         ),
         (
-            frame: (349),
+            frame: 170,
             time_since_startup: (
-                secs: 6,
-                nanos: 263658900,
+                secs: 2,
+                nanos: 802678637,
             ),
-            input_event: Keyboard((
-                scan_code: 17,
-                key_code: Some(W),
-                state: Released,
-            )),
-        ),
-        (
-            frame: (365),
-            time_since_startup: (
-                secs: 6,
-                nanos: 530358800,
-            ),
-            input_event: Keyboard((
-                scan_code: 24,
-                key_code: Some(O),
-                state: Pressed,
-            )),
-        ),
-        (
-            frame: (369),
-            time_since_startup: (
-                secs: 6,
-                nanos: 597034800,
-            ),
-            input_event: Keyboard((
-                scan_code: 24,
-                key_code: Some(O),
-                state: Released,
-            )),
-        ),
-        (
-            frame: (380),
-            time_since_startup: (
-                secs: 6,
-                nanos: 780319600,
-            ),
-            input_event: Keyboard((
-                scan_code: 19,
-                key_code: Some(R),
-                state: Pressed,
-            )),
-        ),
-        (
-            frame: (384),
-            time_since_startup: (
-                secs: 6,
-                nanos: 847000600,
-            ),
-            input_event: Keyboard((
-                scan_code: 19,
-                key_code: Some(R),
-                state: Released,
-            )),
-        ),
-        (
-            frame: (404),
-            time_since_startup: (
-                secs: 7,
-                nanos: 180385800,
-            ),
-            input_event: Keyboard((
-                scan_code: 38,
-                key_code: Some(L),
-                state: Pressed,
-            )),
-        ),
-        (
-            frame: (410),
-            time_since_startup: (
-                secs: 7,
-                nanos: 280361100,
-            ),
-            input_event: Keyboard((
-                scan_code: 38,
-                key_code: Some(L),
-                state: Released,
-            )),
-        ),
-        (
-            frame: (413),
-            time_since_startup: (
-                secs: 7,
-                nanos: 330342400,
-            ),
-            input_event: Keyboard((
-                scan_code: 32,
-                key_code: Some(D),
-                state: Pressed,
-            )),
-        ),
-        (
-            frame: (418),
-            time_since_startup: (
-                secs: 7,
-                nanos: 413715800,
-            ),
-            input_event: Keyboard((
-                scan_code: 32,
-                key_code: Some(D),
-                state: Released,
-            )),
+            input_event: AppExit,
         ),
     ],
     cursor: 0,

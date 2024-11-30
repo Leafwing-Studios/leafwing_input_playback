@@ -1,7 +1,7 @@
 (
     events: [
         (
-            frame: (71),
+            frame: 71,
             time_since_startup: (
                 secs: 1,
                 nanos: 592977800,

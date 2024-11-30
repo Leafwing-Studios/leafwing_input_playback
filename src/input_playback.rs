@@ -13,7 +13,7 @@ use bevy::input::{
 use bevy::log::warn;
 use bevy::time::Time;
 use bevy::utils::Duration;
-use bevy::window::{CursorMoved, Window};
+use bevy::window::{CursorMoved, PrimaryWindow, Window};
 use ron::de::from_reader;
 use std::fs::File;
 
@@ -44,7 +44,7 @@ impl Plugin for InputPlaybackPlugin {
     }
 }
 
-/// An Event that users can send to initiate input capture.
+/// An Observer that users can trigger to initiate input capture.
 ///
 /// Data is serialized to the provided `filepath` when either an [`EndCaptureEvent`] or an [`AppExit`] event is detected.
 #[derive(Debug, Default, Event)]
@@ -57,11 +57,11 @@ pub struct BeginInputPlayback {
     pub playback_strategy: PlaybackStrategy,
     /// A entity corresponding to the [`bevy::window::Window`] which will receive input events.
     /// If unspecified, input events will target the serialized window entity, which may be fragile.
-    pub playback_window: Option<Entity>,
+    pub playback_window: Option<PlaybackWindow>,
 }
 
 impl BeginInputPlayback {
-    /// Initiates input playback and deserializes timestamped inputs from the provided playback source.
+    /// An `ObserverSystem` for `BeginInputPlayback` that deserializes timestamped inputs from a playback source (if provided) and attaches all playback-related resources.
     pub fn observer(trigger: Trigger<BeginInputPlayback>, mut commands: Commands) {
         let event = trigger.event();
         commands.init_resource::<PlaybackProgress>();
@@ -80,8 +80,8 @@ impl BeginInputPlayback {
             commands.insert_resource(timestamped_inputs);
         }
 
-        if let Some(playback_window) = event.playback_window {
-            commands.insert_resource(PlaybackWindow(playback_window));
+        if let Some(playback_window) = &event.playback_window {
+            commands.insert_resource(playback_window.clone());
         }
     }
 }
@@ -99,8 +99,8 @@ pub enum InputPlaybackSource {
 
 impl InputPlaybackSource {
     /// Reads source data from a file using the provided filepath.
-    pub fn from_file(filepath: impl AsRef<String>) -> Self {
-        InputPlaybackSource::File(PlaybackFilePath::new(filepath.as_ref()))
+    pub fn from_file(filepath: impl Into<String>) -> Self {
+        InputPlaybackSource::File(PlaybackFilePath::new(&filepath.into()))
     }
 
     /// Defines source data using raw data.
@@ -115,14 +115,12 @@ impl Default for InputPlaybackSource {
     }
 }
 
-/// An Event that users can send to end input playback prematurely.
+/// An Observer that users can trigger to end input playback prematurely.
 #[derive(Debug, Event)]
 pub struct EndInputPlayback;
 
 impl EndInputPlayback {
-    /// Serializes captured input to the path given in the [`PlaybackFilePath`] resource when an [`EndInputCapture`] is detected.
-    ///
-    /// Use the [`serialized_timestamped_inputs`] function directly if you want to implement custom checkpointing strategies.
+    /// An `ObserverSystem` for `EndInputPlayback` that removes playback-related resources including previously-recorded inputs.
     fn observer(_trigger: Trigger<EndInputPlayback>, mut commands: Commands) {
         commands.remove_resource::<PlaybackFilePath>();
         commands.remove_resource::<TimestampedInputs>();
@@ -132,11 +130,21 @@ impl EndInputPlayback {
     }
 }
 
-/// The `Window` entity for which inputs will be captured.
+/// The `Window` entity that will receive capture events from the .
 ///
 /// If this Resource is attached, input events will be forwarded to this window entity rather than the serialized window entity.
-#[derive(Debug, Resource)]
-pub struct PlaybackWindow(pub Entity);
+#[derive(Clone, Debug, Default, Resource)]
+pub enum PlaybackWindow {
+    /// Overrides the serialized window entity with the current `PrimaryWindow` entity.
+    ///
+    /// This is the most common behavior.
+    #[default]
+    PrimaryWindow,
+    /// Overrides the serialized window entity with a specific Window entity.
+    ///
+    /// This can be used for input playback in multi-window applications.
+    Window(Entity),
+}
 
 /// Controls the approach used for playing back recorded inputs
 ///
@@ -197,30 +205,39 @@ pub struct InputWriters<'w, 's> {
 /// A system that reads from the [`TimestampedInputs`] resources and plays back the contained events.
 ///
 /// The strategy used is based on [`PlaybackStrategy`].
+/// Additionally, `Keyboard`, `MouseButton`, and `MouseWheel` events may target `Window` entities according to the [`PlaybackWindow`].
+#[allow(clippy::too_many_arguments)]
 pub fn playback_timestamped_input(
     mut timestamped_input: ResMut<TimestampedInputs>,
     mut playback_strategy: ResMut<PlaybackStrategy>,
+    playback_window: Option<Res<PlaybackWindow>>,
     time: Res<Time>,
+    primary_window: Query<Entity, (With<Window>, With<PrimaryWindow>)>,
     frame_count: Res<FrameCount>,
     mut input_writers: InputWriters,
     mut playback_progress: ResMut<PlaybackProgress>,
 ) {
+    let window_override = match playback_window.as_deref() {
+        Some(PlaybackWindow::PrimaryWindow) => Some(primary_window.single()),
+        Some(PlaybackWindow::Window(entity)) => Some(*entity),
+        None => None,
+    };
     // We cannot store the iterator, as different opaque return types are used
     match *playback_strategy {
         PlaybackStrategy::Time => {
             let input_events = timestamped_input.iter_until_time(time.elapsed());
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
         }
         PlaybackStrategy::FrameCount => {
             let input_events = timestamped_input.iter_until_frame(*frame_count);
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
         }
         PlaybackStrategy::TimeRangeOnce(start, end) => {
             let input_events = timestamped_input.iter_between_times(
                 playback_progress.current_time(start),
                 playback_progress.next_time(time.delta(), start),
             );
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_time(start) > end {
@@ -234,7 +251,7 @@ pub fn playback_timestamped_input(
                 playback_progress.current_frame(start),
                 playback_progress.next_frame(start),
             );
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_frame(start) > end {
@@ -248,7 +265,7 @@ pub fn playback_timestamped_input(
                 playback_progress.current_time(start),
                 playback_progress.next_time(time.delta(), start),
             );
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_time(start) > end {
@@ -260,7 +277,7 @@ pub fn playback_timestamped_input(
                 playback_progress.current_frame(start),
                 playback_progress.next_frame(start),
             );
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_frame(start) > end {
@@ -276,17 +293,27 @@ pub fn playback_timestamped_input(
 fn send_playback_events(
     timestamped_input_events: impl IntoIterator<Item = TimestampedInputEvent>,
     input_writers: &mut InputWriters,
+    window_override: Option<Entity>,
 ) {
     for timestamped_input_event in timestamped_input_events {
         use crate::timestamped_input::InputEvent::*;
         match timestamped_input_event.input_event {
-            Keyboard(e) => {
+            Keyboard(mut e) => {
+                if let Some(entity) = window_override {
+                    e.window = entity;
+                }
                 input_writers.keyboard_input.send(e);
             }
-            MouseButton(e) => {
+            MouseButton(mut e) => {
+                if let Some(entity) = window_override {
+                    e.window = entity;
+                }
                 input_writers.mouse_button_input.send(e);
             }
-            MouseWheel(e) => {
+            MouseWheel(mut e) => {
+                if let Some(entity) = window_override {
+                    e.window = entity;
+                }
                 input_writers.mouse_wheel.send(e);
             }
             // Window events MUST update the `Window` struct itself

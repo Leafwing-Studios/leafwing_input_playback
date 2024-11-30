@@ -33,7 +33,7 @@ impl Plugin for InputCapturePlugin {
                 Last,
                 (
                     // Capture any mocked input as well
-                    capture_input,
+                    capture_input.run_if(resource_exists::<TimestampedInputs>),
                     handle_final_capture_frame.run_if(resource_exists::<FinalCaptureFrame>),
                 )
                     .chain()
@@ -42,7 +42,7 @@ impl Plugin for InputCapturePlugin {
     }
 }
 
-/// An Event that users can send to initiate input capture.
+/// An Observer that users can trigger to initiate input capture.
 ///
 /// Data is serialized to the provided `filepath` when either an [`EndInputCapture`] or an [`AppExit`] event is detected.
 #[derive(Debug, Default, Event)]
@@ -60,7 +60,7 @@ pub struct BeginInputCapture {
 }
 
 impl BeginInputCapture {
-    /// Initiates input capture when a [`BeginInputCapture`] is detected.
+    /// An `ObserverSystem` for `BeginInputCapture` that attaches all capture-related resources.
     pub fn observer(trigger: Trigger<Self>, mut commands: Commands, frame_count: Res<FrameCount>) {
         let event = trigger.event();
         commands.init_resource::<TimestampedInputs>();
@@ -79,12 +79,12 @@ impl BeginInputCapture {
     }
 }
 
-/// An Observer Trigger that users can send to end input capture and serialize data to disk.
+/// An Observer that users can trigger to end input capture and serialize data to disk.
 #[derive(Debug, Event)]
 pub struct EndInputCapture;
 
 impl EndInputCapture {
-    /// An `ObserverSystem` for `EndInputCapture` that removes all capture-related resources and serializes timestamps if `PlaybackFilePath` exists
+    /// An `ObserverSystem` for `EndInputCapture` that removes all capture-related resources and serializes timestamps if `PlaybackFilePath` exists.
     pub fn observer(
         _trigger: Trigger<Self>,
         mut commands: Commands,

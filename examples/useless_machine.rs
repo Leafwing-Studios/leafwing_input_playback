@@ -3,12 +3,16 @@
 //! This example loads the file, which only contains an `AppExit`,
 //! and then immediately quits itself as soon as it is encountered.
 use bevy::prelude::*;
-use leafwing_input_playback::input_playback::InputPlaybackPlugin;
-use leafwing_input_playback::serde::PlaybackFilePath;
+use leafwing_input_playback::input_playback::{
+    BeginInputPlayback, InputPlaybackPlugin, InputPlaybackSource,
+};
 
 fn main() {
-    App::new()
-        .add_plugins((DefaultPlugins, InputPlaybackPlugin))
-        .insert_resource(PlaybackFilePath::new("./data/app_exit.ron"))
-        .run();
+    let mut app = App::new();
+    app.add_plugins((DefaultPlugins, InputPlaybackPlugin));
+    app.world_mut().trigger(BeginInputPlayback {
+        source: Some(InputPlaybackSource::from_file("./data/app_exit.ron")),
+        ..Default::default()
+    });
+    app.run();
 }
