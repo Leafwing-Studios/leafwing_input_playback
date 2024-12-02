@@ -2,18 +2,18 @@
 //!
 //! These are played back by emulating assorted Bevy input events.
 
-use bevy::app::{App, AppExit, First, Plugin, Startup};
+use bevy::app::{App, AppExit, First, Plugin};
 use bevy::core::FrameCount;
 use bevy::ecs::{prelude::*, system::SystemParam};
-use bevy::input::gamepad::GamepadEvent;
 use bevy::input::{
+    gamepad::GamepadEvent,
     keyboard::KeyboardInput,
     mouse::{MouseButtonInput, MouseWheel},
 };
 use bevy::log::warn;
 use bevy::time::Time;
 use bevy::utils::Duration;
-use bevy::window::{CursorMoved, Window};
+use bevy::window::{CursorMoved, PrimaryWindow, Window};
 use ron::de::from_reader;
 use std::fs::File;
 
@@ -30,16 +30,120 @@ pub struct InputPlaybackPlugin;
 
 impl Plugin for InputPlaybackPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<TimestampedInputs>()
-            .init_resource::<PlaybackProgress>()
-            .init_resource::<PlaybackStrategy>()
-            .init_resource::<PlaybackFilePath>()
-            .add_systems(Startup, deserialize_timestamped_inputs)
+        app.observe(BeginInputPlayback::observer)
+            .observe(EndInputPlayback::observer)
             .add_systems(
                 First,
-                playback_timestamped_input.after(bevy::ecs::event::EventUpdates),
+                playback_timestamped_input
+                    .run_if(
+                        resource_exists::<PlaybackProgress>
+                            .and_then(resource_exists::<TimestampedInputs>),
+                    )
+                    .after(bevy::ecs::event::EventUpdates),
             );
     }
+}
+
+/// An Observer that users can trigger to initiate input capture.
+///
+/// Data is serialized to the provided `filepath` when either an [`EndCaptureEvent`] or an [`AppExit`] event is detected.
+#[derive(Debug, Default, Event)]
+pub struct BeginInputPlayback {
+    /// The source from which to read input data. Do not provide a `source` if the expected `TimestampedInputs` should already be present in `World`.
+    pub source: Option<InputPlaybackSource>,
+    /// Controls the approach used for playing back recorded inputs.
+    ///
+    /// See [`PlaybackStrategy`] for more information.
+    pub playback_strategy: PlaybackStrategy,
+    /// A entity corresponding to the [`bevy::window::Window`] which will receive input events.
+    /// If unspecified, input events will target the serialized window entity, which may be fragile.
+    pub playback_window: Option<PlaybackWindow>,
+}
+
+impl BeginInputPlayback {
+    /// An `ObserverSystem` for `BeginInputPlayback` that deserializes timestamped inputs from a playback source (if provided) and attaches all playback-related resources.
+    pub fn observer(trigger: Trigger<BeginInputPlayback>, mut commands: Commands) {
+        let event = trigger.event();
+        commands.init_resource::<PlaybackProgress>();
+        commands.insert_resource(event.playback_strategy);
+
+        if let Some(source) = event.source.as_ref() {
+            let timestamped_inputs = match source {
+                InputPlaybackSource::TimestampedInputs(inputs) => inputs.clone(),
+                InputPlaybackSource::File(playback_path) => {
+                    commands.insert_resource(playback_path.clone());
+                    deserialize_timestamped_inputs(playback_path)
+                        .unwrap()
+                        .unwrap()
+                }
+            };
+            commands.insert_resource(timestamped_inputs);
+        }
+
+        if let Some(playback_window) = &event.playback_window {
+            commands.insert_resource(playback_window.clone());
+        }
+    }
+}
+
+/// The source of input data for playback.
+///
+/// Typically users should expect to provide a `FilePath`, but `TimestampedInputs` can still be provided manually.
+#[derive(Debug)]
+pub enum InputPlaybackSource {
+    /// Reads from a file and deserializes the content into a `TimestampedInputs`.
+    File(PlaybackFilePath),
+    /// Uses the provided `TimestampedInputs` parameter as the source of input data.
+    TimestampedInputs(TimestampedInputs),
+}
+
+impl InputPlaybackSource {
+    /// Reads source data from a file using the provided filepath.
+    pub fn from_file(filepath: impl Into<String>) -> Self {
+        InputPlaybackSource::File(PlaybackFilePath::new(&filepath.into()))
+    }
+
+    /// Defines source data using raw data.
+    pub fn from_inputs(inputs: TimestampedInputs) -> Self {
+        InputPlaybackSource::TimestampedInputs(inputs)
+    }
+}
+
+impl Default for InputPlaybackSource {
+    fn default() -> Self {
+        Self::TimestampedInputs(TimestampedInputs::default())
+    }
+}
+
+/// An Observer that users can trigger to end input playback prematurely.
+#[derive(Debug, Event)]
+pub struct EndInputPlayback;
+
+impl EndInputPlayback {
+    /// An `ObserverSystem` for `EndInputPlayback` that removes playback-related resources including previously-recorded inputs.
+    fn observer(_trigger: Trigger<EndInputPlayback>, mut commands: Commands) {
+        commands.remove_resource::<PlaybackFilePath>();
+        commands.remove_resource::<TimestampedInputs>();
+        commands.remove_resource::<PlaybackProgress>();
+        commands.remove_resource::<PlaybackStrategy>();
+        commands.remove_resource::<PlaybackWindow>();
+    }
+}
+
+/// The `Window` entity that will receive capture events from the .
+///
+/// If this Resource is attached, input events will be forwarded to this window entity rather than the serialized window entity.
+#[derive(Clone, Debug, Default, Resource)]
+pub enum PlaybackWindow {
+    /// Overrides the serialized window entity with the current `PrimaryWindow` entity.
+    ///
+    /// This is the most common behavior.
+    #[default]
+    PrimaryWindow,
+    /// Overrides the serialized window entity with a specific Window entity.
+    ///
+    /// This can be used for input playback in multi-window applications.
+    Window(Entity),
 }
 
 /// Controls the approach used for playing back recorded inputs
@@ -101,30 +205,39 @@ pub struct InputWriters<'w, 's> {
 /// A system that reads from the [`TimestampedInputs`] resources and plays back the contained events.
 ///
 /// The strategy used is based on [`PlaybackStrategy`].
+/// Additionally, `Keyboard`, `MouseButton`, and `MouseWheel` events may target `Window` entities according to the [`PlaybackWindow`].
+#[allow(clippy::too_many_arguments)]
 pub fn playback_timestamped_input(
     mut timestamped_input: ResMut<TimestampedInputs>,
     mut playback_strategy: ResMut<PlaybackStrategy>,
+    playback_window: Option<Res<PlaybackWindow>>,
     time: Res<Time>,
+    primary_window: Query<Entity, (With<Window>, With<PrimaryWindow>)>,
     frame_count: Res<FrameCount>,
     mut input_writers: InputWriters,
     mut playback_progress: ResMut<PlaybackProgress>,
 ) {
+    let window_override = match playback_window.as_deref() {
+        Some(PlaybackWindow::PrimaryWindow) => Some(primary_window.single()),
+        Some(PlaybackWindow::Window(entity)) => Some(*entity),
+        None => None,
+    };
     // We cannot store the iterator, as different opaque return types are used
     match *playback_strategy {
         PlaybackStrategy::Time => {
             let input_events = timestamped_input.iter_until_time(time.elapsed());
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
         }
         PlaybackStrategy::FrameCount => {
             let input_events = timestamped_input.iter_until_frame(*frame_count);
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
         }
         PlaybackStrategy::TimeRangeOnce(start, end) => {
             let input_events = timestamped_input.iter_between_times(
                 playback_progress.current_time(start),
                 playback_progress.next_time(time.delta(), start),
             );
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_time(start) > end {
@@ -138,7 +251,7 @@ pub fn playback_timestamped_input(
                 playback_progress.current_frame(start),
                 playback_progress.next_frame(start),
             );
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_frame(start) > end {
@@ -152,7 +265,7 @@ pub fn playback_timestamped_input(
                 playback_progress.current_time(start),
                 playback_progress.next_time(time.delta(), start),
             );
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_time(start) > end {
@@ -164,7 +277,7 @@ pub fn playback_timestamped_input(
                 playback_progress.current_frame(start),
                 playback_progress.next_frame(start),
             );
-            send_playback_events(input_events, &mut input_writers);
+            send_playback_events(input_events, &mut input_writers, window_override);
 
             // If we've covered the entire range, reset our progress
             if playback_progress.current_frame(start) > end {
@@ -180,17 +293,27 @@ pub fn playback_timestamped_input(
 fn send_playback_events(
     timestamped_input_events: impl IntoIterator<Item = TimestampedInputEvent>,
     input_writers: &mut InputWriters,
+    window_override: Option<Entity>,
 ) {
     for timestamped_input_event in timestamped_input_events {
         use crate::timestamped_input::InputEvent::*;
         match timestamped_input_event.input_event {
-            Keyboard(e) => {
+            Keyboard(mut e) => {
+                if let Some(entity) = window_override {
+                    e.window = entity;
+                }
                 input_writers.keyboard_input.send(e);
             }
-            MouseButton(e) => {
+            MouseButton(mut e) => {
+                if let Some(entity) = window_override {
+                    e.window = entity;
+                }
                 input_writers.mouse_button_input.send(e);
             }
-            MouseWheel(e) => {
+            MouseWheel(mut e) => {
+                if let Some(entity) = window_override {
+                    e.window = entity;
+                }
                 input_writers.mouse_wheel.send(e);
             }
             // Window events MUST update the `Window` struct itself
@@ -216,12 +339,40 @@ fn send_playback_events(
 
 /// Reads the stored file paths from the [`PlaybackFilePath`] location (if any)
 pub fn deserialize_timestamped_inputs(
-    mut timestamped_inputs: ResMut<TimestampedInputs>,
-    playback_path: Res<PlaybackFilePath>,
-) {
-    if let Some(file_path) = playback_path.path() {
-        let file = File::open(file_path).unwrap();
-        *timestamped_inputs = from_reader(file).unwrap();
+    playback_path: &PlaybackFilePath,
+) -> Option<Result<TimestampedInputs, TimestampedInputsError>> {
+    playback_path.path().as_ref().map(|file_path| {
+        let file = File::open(file_path).map_err(TimestampedInputsError::Fs)?;
+        from_reader(file).map_err(TimestampedInputsError::Ron)
+    })
+}
+
+/// An error type that wraps the possible error variants when deserializing `TimestampedInputs` from a file.
+#[derive(Debug)]
+pub enum TimestampedInputsError {
+    /// The error case where the filesystem failed to open the desired file path.
+    Fs(std::io::Error),
+    /// The error case where the content at the provided filepath did not have valid RON content.
+    Ron(ron::de::SpannedError),
+}
+
+impl std::fmt::Display for TimestampedInputsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            TimestampedInputsError::Fs(_error) => write!(f, "could not find playback file "),
+            TimestampedInputsError::Ron(_error) => {
+                write!(f, "the provided file did not have valid RON-formatted data")
+            }
+        }
+    }
+}
+
+impl std::error::Error for TimestampedInputsError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match *self {
+            TimestampedInputsError::Fs(ref error) => Some(error),
+            TimestampedInputsError::Ron(ref error) => Some(error),
+        }
     }
 }
 

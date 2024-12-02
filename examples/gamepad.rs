@@ -7,28 +7,26 @@
 
 use bevy::prelude::*;
 use leafwing_input_playback::{
-    input_capture::{InputCapturePlugin, InputModesCaptured},
-    input_playback::{InputPlaybackPlugin, PlaybackStrategy},
+    input_capture::{BeginInputCapture, EndInputCapture, InputCapturePlugin},
+    input_playback::{BeginInputPlayback, EndInputPlayback, InputPlaybackPlugin, PlaybackStrategy},
     timestamped_input::TimestampedInputs,
 };
 
 fn main() {
     use gamepad_viewer_example::*;
 
-    App::new()
+    let mut app = App::new();
+    app.add_plugins((
         // This plugin contains all the code from the original example
-        .add_plugins((
-            GamepadViewerExample,
-            InputCapturePlugin,
-            InputPlaybackPlugin,
-        ))
-        // Disable all input capture and playback to start
-        .insert_resource(InputModesCaptured::DISABLE_ALL)
-        .insert_resource(PlaybackStrategy::Paused)
-        // Toggle between playback and capture using Space
-        .insert_resource(InputStrategy::Playback)
-        .add_systems(Update, toggle_capture_vs_playback)
-        .run();
+        GamepadViewerExample,
+        InputCapturePlugin,
+        InputPlaybackPlugin,
+    ))
+    // Toggle between playback and capture using Space
+    .insert_resource(InputStrategy::Playback)
+    .add_systems(Update, toggle_capture_vs_playback);
+
+    app.run();
 }
 
 #[derive(Resource, PartialEq)]
@@ -38,39 +36,41 @@ enum InputStrategy {
 }
 
 fn toggle_capture_vs_playback(
-    mut input_modes: ResMut<InputModesCaptured>,
-    mut playback_strategy: ResMut<PlaybackStrategy>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut timestamped_input: ResMut<TimestampedInputs>,
+    mut commands: Commands,
     mut input_strategy: ResMut<InputStrategy>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    timestamped_input: Option<ResMut<TimestampedInputs>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         *input_strategy = match *input_strategy {
             InputStrategy::Capture => {
                 // Disable input capture
-                *input_modes = InputModesCaptured::DISABLE_ALL;
+                commands.trigger(EndInputCapture);
                 // Enable input playback
-                *playback_strategy = if let Some((start, end)) =
+                if let Some((start, end)) =
                     // Play back all recorded inputs at the same rate they were input
-                    timestamped_input.frame_range()
+                    timestamped_input
+                        .and_then(|timestamped_input| timestamped_input.frame_range())
                 {
-                    PlaybackStrategy::FrameRangeOnce(start, end)
+                    commands.trigger(BeginInputPlayback {
+                        playback_strategy: PlaybackStrategy::FrameRangeOnce(start, end),
+                        ..default()
+                    });
+                    info!("Now playing back input.");
                 } else {
-                    // Do not play back events if none were recorded
-                    PlaybackStrategy::Paused
-                };
+                    info!("No input to replay.");
+                }
 
-                info!("Now playing back input.");
                 InputStrategy::Playback
             }
             InputStrategy::Playback => {
+                // Disable input playback, resetting all input data.
+                commands.trigger(EndInputPlayback);
                 // Enable input capture
-                *input_modes = InputModesCaptured::ENABLE_ALL;
-                // Disable input playback
-                *playback_strategy = PlaybackStrategy::Paused;
-
-                // Reset all input data, starting a new recording
-                *timestamped_input = TimestampedInputs::default();
+                commands.trigger(BeginInputCapture {
+                    filepath: Some("./data/hello_world.ron".to_string()),
+                    ..default()
+                });
 
                 info!("Now capturing input.");
                 InputStrategy::Capture

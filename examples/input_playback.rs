@@ -1,27 +1,24 @@
 use bevy::{color::palettes, prelude::*, window::PrimaryWindow};
 
 use leafwing_input_playback::{
-    input_capture::{InputCapturePlugin, InputModesCaptured},
-    input_playback::{InputPlaybackPlugin, PlaybackStrategy},
+    input_capture::{BeginInputCapture, EndInputCapture, InputCapturePlugin},
+    input_playback::{BeginInputPlayback, EndInputPlayback, InputPlaybackPlugin, PlaybackStrategy},
     timestamped_input::TimestampedInputs,
 };
 
 fn main() -> AppExit {
-    App::new()
-        .add_plugins((DefaultPlugins, InputCapturePlugin, InputPlaybackPlugin))
-        // Disable all input capture and playback to start
-        .insert_resource(InputModesCaptured::DISABLE_ALL)
-        .insert_resource(PlaybackStrategy::Paused)
+    let mut app = App::new();
+    app.add_plugins((DefaultPlugins, InputCapturePlugin, InputPlaybackPlugin))
         // Creates a little game that spawns decaying boxes where the player clicks
         .insert_resource(ClearColor(Color::srgb(0.9, 0.9, 0.9)))
+        // Toggle between playback and capture by pressing Space
+        .insert_resource(InputStrategy::Playback)
         .add_systems(Startup, setup)
         .add_systems(
             Update,
             (spawn_boxes, decay_boxes, toggle_capture_vs_playback),
-        )
-        // Toggle between playback and capture by pressing Space
-        .insert_resource(InputStrategy::Playback)
-        .run()
+        );
+    app.run()
 }
 
 #[derive(Resource, PartialEq)]
@@ -36,18 +33,13 @@ fn setup(mut commands: Commands) {
 
 pub fn cursor_pos_as_world_pos(
     current_window: &Window,
-    camera_query: &Query<(&Transform, &Camera)>,
+    camera_query: &Query<(&GlobalTransform, &Camera)>,
 ) -> Option<Vec2> {
-    current_window.cursor_position().map(|cursor_pos| {
-        let (cam_t, cam) = camera_query.single();
-        let window_size = Vec2::new(current_window.width(), current_window.height());
-
-        // Convert screen position [0..resolution] to ndc [-1..1]
-        let ndc_to_world = cam_t.compute_matrix() * cam.clip_from_view().inverse();
-        let ndc = (Vec2::new(cursor_pos.x, cursor_pos.y) / window_size) * 2.0 - Vec2::ONE;
-        let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
-        world_pos.truncate()
-    })
+    let (camera_transform, camera) = camera_query.single();
+    current_window
+        .cursor_position()
+        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+        .map(|ray| ray.origin.truncate())
 }
 
 #[derive(Component)]
@@ -57,7 +49,7 @@ fn spawn_boxes(
     mut commands: Commands,
     windows: Query<&Window, With<PrimaryWindow>>,
     mouse_input: Res<ButtonInput<MouseButton>>,
-    camera_query: Query<(&Transform, &Camera)>,
+    camera_query: Query<(&GlobalTransform, &Camera)>,
 ) {
     const BOX_SCALE: f32 = 50.0;
 
@@ -97,39 +89,38 @@ fn decay_boxes(mut query: Query<(Entity, &mut Transform), With<Box>>, mut comman
 }
 
 fn toggle_capture_vs_playback(
-    mut input_modes: ResMut<InputModesCaptured>,
-    mut playback_strategy: ResMut<PlaybackStrategy>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut timestamped_input: ResMut<TimestampedInputs>,
+    mut commands: Commands,
     mut input_strategy: ResMut<InputStrategy>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    timestamped_input: Option<ResMut<TimestampedInputs>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         *input_strategy = match *input_strategy {
             InputStrategy::Capture => {
                 // Disable input capture
-                *input_modes = InputModesCaptured::DISABLE_ALL;
+                commands.trigger(EndInputCapture);
                 // Enable input playback
-                *playback_strategy = if let Some((start, end)) =
+                if let Some((start, end)) =
                     // Play back all recorded inputs at the same rate they were input
-                    timestamped_input.frame_range()
+                    timestamped_input
+                        .and_then(|timestamped_input| timestamped_input.frame_range())
                 {
-                    PlaybackStrategy::FrameRangeOnce(start, end)
+                    commands.trigger(BeginInputPlayback {
+                        playback_strategy: PlaybackStrategy::FrameRangeOnce(start, end),
+                        ..default()
+                    });
+                    info!("Now playing back input.");
                 } else {
-                    // Do not play back events if none were recorded
-                    PlaybackStrategy::Paused
-                };
+                    info!("No input to replay.");
+                }
 
-                info!("Now playing back input.");
                 InputStrategy::Playback
             }
             InputStrategy::Playback => {
+                // Disable input playback, resetting all input data.
+                commands.trigger(EndInputPlayback);
                 // Enable input capture
-                *input_modes = InputModesCaptured::ENABLE_ALL;
-                // Disable input playback
-                *playback_strategy = PlaybackStrategy::Paused;
-
-                // Reset all input data, starting a new recording
-                *timestamped_input = TimestampedInputs::default();
+                commands.trigger(BeginInputCapture::default());
 
                 info!("Now capturing input.");
                 InputStrategy::Capture

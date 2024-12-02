@@ -1,15 +1,20 @@
 /// Demonstrates reading saved inputs from disk, and playing them back.
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
-use leafwing_input_playback::input_playback::InputPlaybackPlugin;
-use leafwing_input_playback::serde::PlaybackFilePath;
+use leafwing_input_playback::input_playback::{
+    BeginInputPlayback, InputPlaybackPlugin, InputPlaybackSource,
+};
 
 fn main() {
-    App::new()
-        .add_plugins((DefaultPlugins, InputPlaybackPlugin))
-        .insert_resource(PlaybackFilePath::new("./data/hello_world.ron"))
-        .add_systems(Update, debug_keyboard_inputs)
-        .run();
+    let mut app = App::new();
+    app.add_plugins((DefaultPlugins, InputPlaybackPlugin));
+    app.add_systems(Update, debug_keyboard_inputs);
+
+    app.world_mut().trigger(BeginInputPlayback {
+        source: Some(InputPlaybackSource::from_file("./data/hello_world.ron")),
+        ..Default::default()
+    });
+    app.run();
 }
 
 fn debug_keyboard_inputs(mut keyboard_events: EventReader<KeyboardInput>) {

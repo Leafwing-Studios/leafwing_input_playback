@@ -27,21 +27,94 @@ pub struct InputCapturePlugin;
 
 impl Plugin for InputCapturePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<TimestampedInputs>()
-            .init_resource::<InputModesCaptured>()
-            .init_resource::<PlaybackFilePath>()
+        app.observe(BeginInputCapture::observer)
+            .observe(EndInputCapture::observer)
             .add_systems(
                 Last,
                 (
                     // Capture any mocked input as well
-                    capture_input,
-                    serialize_captured_input_on_exit,
+                    capture_input.run_if(resource_exists::<TimestampedInputs>),
+                    handle_final_capture_frame.run_if(resource_exists::<FinalCaptureFrame>),
                 )
                     .chain()
                     .before(update_frame_count),
             );
     }
 }
+
+/// An Observer that users can trigger to initiate input capture.
+///
+/// Data is serialized to the provided `filepath` when either an [`EndInputCapture`] or an [`AppExit`] event is detected.
+#[derive(Debug, Default, Event)]
+pub struct BeginInputCapture {
+    /// The input mechanisms that will be captured, see [`InputModesCaptured`].
+    pub input_modes_captured: InputModesCaptured,
+    /// The filepath at which to serialize captured input data.
+    pub filepath: Option<String>,
+    /// The number of frames for which inputs should be captured.
+    /// If None, inputs will be captured until an [`EndInputCapture`] or [`AppExit`] event is detected.
+    pub frames_to_capture: Option<FrameCount>,
+    /// A `Window` entity which acts as a filter for which inputs will be captured.
+    /// This data will not be serialized, so that a target window can be selected on playback.
+    pub window_to_capture: Option<Entity>,
+}
+
+impl BeginInputCapture {
+    /// An `ObserverSystem` for `BeginInputCapture` that attaches all capture-related resources.
+    pub fn observer(trigger: Trigger<Self>, mut commands: Commands, frame_count: Res<FrameCount>) {
+        let event = trigger.event();
+        commands.init_resource::<TimestampedInputs>();
+        commands.insert_resource(event.input_modes_captured.clone());
+        if let Some(path) = &event.filepath {
+            commands.insert_resource(PlaybackFilePath::new(path));
+        }
+        if let Some(final_frame) = event.frames_to_capture {
+            commands.insert_resource(FinalCaptureFrame(FrameCount(
+                frame_count.0.wrapping_add(final_frame.0),
+            )));
+        }
+        if let Some(window_entity) = &event.window_to_capture {
+            commands.insert_resource(InputCaptureWindow(*window_entity));
+        }
+    }
+}
+
+/// An Observer that users can trigger to end input capture and serialize data to disk.
+#[derive(Debug, Event)]
+pub struct EndInputCapture;
+
+impl EndInputCapture {
+    /// An `ObserverSystem` for `EndInputCapture` that removes all capture-related resources and serializes timestamps if `PlaybackFilePath` exists.
+    pub fn observer(
+        _trigger: Trigger<Self>,
+        mut commands: Commands,
+        captured_inputs: Res<TimestampedInputs>,
+        playback_file: Option<Res<PlaybackFilePath>>,
+    ) {
+        // if a PlaybackFilePath exists, serialize `TimestampedInputs` and remove it
+        if let Some(playback_file) = playback_file.as_deref() {
+            serialize_timestamped_inputs(&captured_inputs, playback_file);
+            commands.remove_resource::<TimestampedInputs>();
+            commands.remove_resource::<PlaybackFilePath>();
+        }
+        // also remove capture-related resources
+        commands.remove_resource::<InputModesCaptured>();
+        commands.remove_resource::<FinalCaptureFrame>();
+        commands.remove_resource::<InputCaptureWindow>();
+    }
+}
+
+/// The final [`FrameCount`] at which inputs will stop being captured.
+///
+/// If this Resource is attached, [`TimestampedInputs`] will be serialized and input capture will stop once `FrameCount` reaches this value.
+#[derive(Debug, Resource)]
+pub struct FinalCaptureFrame(FrameCount);
+
+/// The `Window` entity for which inputs will be captured.
+///
+/// If this Resource is attached, only input events on the window corresponding to this entity will be captured.
+#[derive(Debug, Resource)]
+pub struct InputCaptureWindow(Entity);
 
 /// The input mechanisms captured via the [`InputCapturePlugin`], configured as a resource.
 ///
@@ -98,10 +171,21 @@ pub fn capture_input(
     mut gamepad_events: EventReader<GamepadEvent>,
     mut app_exit_events: EventReader<AppExit>,
     mut timestamped_input: ResMut<TimestampedInputs>,
-    input_modes_captured: Res<InputModesCaptured>,
+    window_to_capture: Option<Res<InputCaptureWindow>>,
+    input_modes_captured: Option<Res<InputModesCaptured>>,
     frame_count: Res<FrameCount>,
     time: Res<Time>,
 ) {
+    let Some(input_modes_captured) = input_modes_captured else {
+        mouse_button_events.clear();
+        mouse_wheel_events.clear();
+        cursor_moved_events.clear();
+        keyboard_events.clear();
+        gamepad_events.clear();
+        app_exit_events.clear();
+        return;
+    };
+
     let time_since_startup = time.elapsed();
     let frame = *frame_count;
 
@@ -113,13 +197,29 @@ pub fn capture_input(
         timestamped_input.send_multiple(
             frame,
             time_since_startup,
-            mouse_button_events.read().cloned(),
+            mouse_button_events
+                .read()
+                .filter(|event| {
+                    window_to_capture
+                        .as_deref()
+                        .map(|window| window.0 == event.window)
+                        .unwrap_or(true)
+                })
+                .cloned(),
         );
 
         timestamped_input.send_multiple(
             frame,
             time_since_startup,
-            mouse_wheel_events.read().cloned(),
+            mouse_wheel_events
+                .read()
+                .filter(|event| {
+                    window_to_capture
+                        .as_deref()
+                        .map(|window| window.0 == event.window)
+                        .unwrap_or(true)
+                })
+                .cloned(),
         );
     } else {
         mouse_button_events.clear();
@@ -130,14 +230,34 @@ pub fn capture_input(
         timestamped_input.send_multiple(
             frame,
             time_since_startup,
-            cursor_moved_events.read().cloned(),
+            cursor_moved_events
+                .read()
+                .filter(|event| {
+                    window_to_capture
+                        .as_deref()
+                        .map(|window| window.0 == event.window)
+                        .unwrap_or(true)
+                })
+                .cloned(),
         );
     } else {
         cursor_moved_events.clear();
     }
 
     if input_modes_captured.keyboard {
-        timestamped_input.send_multiple(frame, time_since_startup, keyboard_events.read().cloned());
+        timestamped_input.send_multiple(
+            frame,
+            time_since_startup,
+            keyboard_events
+                .read()
+                .filter(|event| {
+                    window_to_capture
+                        .as_deref()
+                        .map(|window| window.0 == event.window)
+                        .unwrap_or(true)
+                })
+                .cloned(),
+        );
     } else {
         keyboard_events.clear()
     }
@@ -151,17 +271,24 @@ pub fn capture_input(
     timestamped_input.send_multiple(frame, time_since_startup, app_exit_events.read().cloned())
 }
 
-/// Serializes captured input to the path given in the [`PlaybackFilePath`] resource.
-///
-/// This data is only serialized once when [`AppExit`] is sent.
-/// Use the [`serialized_timestamped_inputs`] function directly if you want to implement custom checkpointing strategies.
-pub fn serialize_captured_input_on_exit(
+/// Serializes captured input to the path given in the [`PlaybackFilePath`] resource once [`AppExit`] is sent.
+pub fn trigger_input_capture_on_exit(
     app_exit_events: EventReader<AppExit>,
-    playback_file: Res<PlaybackFilePath>,
-    captured_inputs: Res<TimestampedInputs>,
+    mut commands: Commands,
 ) {
     if !app_exit_events.is_empty() {
-        serialize_timestamped_inputs(&captured_inputs, &playback_file);
+        commands.trigger(EndInputCapture);
+    }
+}
+
+/// Triggers `EndInputCapture` once the provided number of frames have elapsed.
+pub fn handle_final_capture_frame(
+    mut commands: Commands,
+    frame_count: Res<FrameCount>,
+    final_frame: Res<FinalCaptureFrame>,
+) {
+    if *frame_count == final_frame.0 {
+        commands.trigger(EndInputCapture);
     }
 }
 

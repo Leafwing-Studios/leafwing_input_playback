@@ -420,31 +420,11 @@ mod tests {
 
     fn complex_timestamped_input() -> TimestampedInputs {
         let mut inputs = TimestampedInputs::default();
-        inputs.send(
-            FrameCount(0),
-            Duration::from_secs(0),
-            LEFT_CLICK_PRESS.into(),
-        );
-        inputs.send(
-            FrameCount(1),
-            Duration::from_secs(1),
-            LEFT_CLICK_RELEASE.into(),
-        );
-        inputs.send(
-            FrameCount(2),
-            Duration::from_secs(2),
-            LEFT_CLICK_PRESS.into(),
-        );
-        inputs.send(
-            FrameCount(2),
-            Duration::from_secs(3),
-            LEFT_CLICK_PRESS.into(),
-        );
-        inputs.send(
-            FrameCount(3),
-            Duration::from_secs(3),
-            LEFT_CLICK_PRESS.into(),
-        );
+        inputs.send(FrameCount(0), Duration::from_secs(0), LEFT_CLICK_PRESS);
+        inputs.send(FrameCount(1), Duration::from_secs(1), LEFT_CLICK_RELEASE);
+        inputs.send(FrameCount(2), Duration::from_secs(2), LEFT_CLICK_PRESS);
+        inputs.send(FrameCount(2), Duration::from_secs(3), LEFT_CLICK_PRESS);
+        inputs.send(FrameCount(3), Duration::from_secs(3), LEFT_CLICK_PRESS);
 
         inputs
     }
@@ -466,7 +446,7 @@ mod tests {
         let events = [LEFT_CLICK_PRESS, LEFT_CLICK_RELEASE];
 
         // This sends all events received simultaneously
-        timestamped_input.send_multiple(FrameCount(0), Duration::ZERO, events.into_iter());
+        timestamped_input.send_multiple(FrameCount(0), Duration::ZERO, events);
 
         assert_eq!(timestamped_input.len(), 2);
         assert_eq!(timestamped_input.last_framecount(), None);
