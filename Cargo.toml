@@ -21,7 +21,10 @@ members = ["./", "tools/ci"]
 default = []
 
 [dependencies]
-bevy = { version = "0.15", default-features = false, features = ["serialize"] }
+bevy = { version = "0.15", default-features = false, features = [
+    "bevy_window",
+    "serialize",
+] }
 serde = { version = "1.0", features = ["derive"] }
 ron = "0.8"
 
