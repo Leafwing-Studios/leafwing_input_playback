@@ -20,6 +20,7 @@ const TEST_PRESS: KeyboardInput = KeyboardInput {
     key_code: KeyCode::KeyF,
     state: ButtonState::Pressed,
     window: Entity::PLACEHOLDER,
+    repeat: false,
 };
 
 const TEST_RELEASE: KeyboardInput = KeyboardInput {
@@ -27,6 +28,7 @@ const TEST_RELEASE: KeyboardInput = KeyboardInput {
     key_code: KeyCode::KeyF,
     state: ButtonState::Released,
     window: Entity::PLACEHOLDER,
+    repeat: false,
 };
 
 const TEST_MOUSE: MouseButtonInput = MouseButtonInput {

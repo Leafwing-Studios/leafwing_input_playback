@@ -2,6 +2,7 @@
 
 use bevy::core::FrameCount;
 use bevy::ecs::event::EventRegistry;
+use bevy::ecs::event::ShouldUpdateEvents;
 use bevy::input::keyboard::Key;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ButtonState;
@@ -24,6 +25,7 @@ const TEST_PRESS: KeyboardInput = KeyboardInput {
     key_code: KeyCode::KeyF,
     state: ButtonState::Pressed,
     window: Entity::PLACEHOLDER,
+    repeat: false,
 };
 
 const TEST_RELEASE: KeyboardInput = KeyboardInput {
@@ -31,6 +33,7 @@ const TEST_RELEASE: KeyboardInput = KeyboardInput {
     key_code: KeyCode::KeyF,
     state: ButtonState::Released,
     window: Entity::PLACEHOLDER,
+    repeat: false,
 };
 
 fn playback_app() -> App {
@@ -77,7 +80,7 @@ fn minimal_playback() {
         source: Some(InputPlaybackSource::from_inputs(simple_timestamped_input())),
         ..Default::default()
     });
-    app.world_mut().flush_commands();
+    app.world_mut().flush();
 
     let input_events = app.world().resource::<Events<KeyboardInput>>();
     assert_eq!(input_events.len(), 0);
@@ -108,7 +111,7 @@ fn capture_and_playback() {
         source: Some(InputPlaybackSource::from_inputs(Default::default())),
         ..Default::default()
     });
-    app.world_mut().flush_commands();
+    app.world_mut().flush();
 
     let mut input_events = app.world_mut().resource_mut::<Events<KeyboardInput>>();
     input_events.send(TEST_PRESS);
@@ -147,7 +150,7 @@ fn repeated_playback() {
         source: Some(InputPlaybackSource::from_inputs(simple_timestamped_input())),
         ..Default::default()
     });
-    app.world_mut().flush_commands();
+    app.world_mut().flush();
 
     let input_events = app.world().resource::<Events<KeyboardInput>>();
     assert_eq!(input_events.len(), 0);
@@ -180,7 +183,7 @@ fn playback_strategy_paused() {
         source: Some(InputPlaybackSource::from_inputs(complex_timestamped_input())),
         ..Default::default()
     });
-    app.world_mut().flush_commands();
+    app.world_mut().flush();
 
     let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.cursor, 0);
@@ -202,7 +205,7 @@ fn playback_strategy_frame() {
         source: Some(InputPlaybackSource::from_inputs(complex_timestamped_input())),
         ..Default::default()
     });
-    app.world_mut().flush_commands();
+    app.world_mut().flush();
 
     let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.cursor, 0);
@@ -235,7 +238,7 @@ fn playback_strategy_frame_range_once() {
         source: Some(InputPlaybackSource::from_inputs(complex_timestamped_input())),
         ..Default::default()
     });
-    app.world_mut().flush_commands();
+    app.world_mut().flush();
 
     let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.cursor, 0);
@@ -280,7 +283,7 @@ fn playback_strategy_frame_range_loop() {
         source: Some(InputPlaybackSource::from_inputs(complex_timestamped_input())),
         ..Default::default()
     });
-    app.world_mut().flush_commands();
+    app.world_mut().flush();
 
     let timestamped_input = app.world().resource::<TimestampedInputs>();
     assert_eq!(timestamped_input.cursor, 0);
