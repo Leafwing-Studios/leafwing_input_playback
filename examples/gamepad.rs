@@ -91,8 +91,10 @@ mod gamepad_viewer_example {
                 .init_resource::<ButtonMeshes>()
                 .init_resource::<FontHandle>()
                 .add_systems(
-                    Startup,
-                    (setup, setup_sticks, setup_triggers, setup_connected),
+                    PreUpdate,
+                    (setup, setup_sticks, setup_triggers, setup_connected)
+                        .run_if(any_with_component::<Gamepad>.and(run_once))
+                        .after(InputSystem),
                 )
                 .add_systems(
                     Update,
@@ -100,8 +102,9 @@ mod gamepad_viewer_example {
                         update_buttons,
                         update_button_values,
                         update_axes,
-                        update_connected,
-                    ),
+                        update_connected.run_if(any_with_component::<ConnectedGamepadsText>),
+                    )
+                        .run_if(any_with_component::<Gamepad>),
                 );
         }
     }
@@ -110,7 +113,10 @@ mod gamepad_viewer_example {
 
     use bevy::{
         color::palettes,
-        input::gamepad::{GamepadButton, GamepadButtonChangedEvent, GamepadEvent, GamepadSettings},
+        input::{
+            gamepad::{GamepadButton, GamepadButtonChangedEvent, GamepadEvent, GamepadSettings},
+            InputSystem,
+        },
         prelude::*,
     };
 
@@ -132,8 +138,6 @@ mod gamepad_viewer_example {
     const EXTENT_COLOR: Color = Color::srgb(0.3, 0.3, 0.3);
     const TEXT_COLOR: TextColor = TextColor(Color::WHITE);
 
-    #[derive(Resource)]
-    struct DisplayGamepad(Entity);
     #[derive(Component, Deref)]
     struct ReactTo(GamepadButton);
     #[derive(Clone, Copy, Component)]
@@ -141,6 +145,8 @@ mod gamepad_viewer_example {
         Left,
         Right,
     }
+    #[derive(Component)]
+    struct GamepadLabel(Entity);
     #[derive(Component)]
     struct ButtonScale(f32);
 
@@ -322,13 +328,9 @@ mod gamepad_viewer_example {
         mut commands: Commands,
         meshes: Res<ButtonMeshes>,
         materials: Res<ButtonMaterials>,
-        gamepad_settings: Query<&GamepadSettings>,
+        gamepad_settings: Single<&GamepadSettings>,
         font: Res<FontHandle>,
     ) {
-        let Ok(gamepad_settings) = gamepad_settings.get_single() else {
-            eprintln!("NOOOO");
-            return;
-        };
         let dead_upper =
             STICK_BOUNDS_SIZE * gamepad_settings.default_axis_settings.deadzone_upperbound();
         let dead_lower =
@@ -377,16 +379,14 @@ mod gamepad_viewer_example {
                         font: font.clone(),
                         ..default()
                     };
-                    parent
-                        .spawn((
-                            Transform::from_xyz(0., STICK_BOUNDS_SIZE + 2., 4.),
-                            Text2d::new(""),
-                            font,
-                            stick,
-                        ))
-                        .with_child(Text2d::new(format!("{:.3}", 0.)))
-                        .with_child(Text2d::new(", ".to_string()))
-                        .with_child(Text2d::new(format!("{:.3}", 0.)));
+                    let layout = TextLayout::new(JustifyText::Justified, LineBreak::NoWrap);
+                    parent.spawn((
+                        Transform::from_xyz(0., STICK_BOUNDS_SIZE + 2., 4.),
+                        Text2d::new(format!("{:.3}, {:.3}", 0., 0.)),
+                        font,
+                        layout,
+                        stick,
+                    ));
                     // cursor
                     parent.spawn((
                         Mesh2d(meshes.circle.clone()),
@@ -455,11 +455,23 @@ mod gamepad_viewer_example {
         };
         commands
             .spawn((
-                Text2d::new("Connected Gamepads\n".to_string()),
+                ConnectedGamepadsText,
+                Text::new("Connected Gamepads:".to_string()),
                 font.clone(),
+                TextLayout::new(JustifyText::Left, LineBreak::WordBoundary),
+                Node {
+                    justify_content: JustifyContent::FlexStart,
+                    flex_direction: FlexDirection::Column,
+                    top: Val::Percent(2.),
+                    left: Val::Percent(2.),
+                    width: Val::Px(350.),
+                    overflow: Overflow::clip_x(),
+                    row_gap: Val::Px(20.),
+                    padding: UiRect::top(Val::Px(40.)),
+                    ..Default::default()
+                },
             ))
-            .insert(ConnectedGamepadsText)
-            .with_child(Text2d::new("None"));
+            .with_child(Text::new("None"));
     }
 
     fn update_buttons(
@@ -497,8 +509,7 @@ mod gamepad_viewer_example {
     fn update_axes(
         gamepads: Query<&Gamepad>,
         mut ui_query: Query<(&mut Transform, &GamepadStick, &ButtonScale), Without<Text2d>>,
-        text_query: Query<(Entity, &GamepadStick), With<Text2d>>,
-        mut text_writer: Text2dWriter,
+        mut text_query: Query<(&mut Text2d, &GamepadStick)>,
     ) {
         for gamepad in gamepads.iter() {
             let left_stick = gamepad.left_stick();
@@ -511,37 +522,72 @@ mod gamepad_viewer_example {
                 transform.translation.x = stick_pos.x * scale.0;
                 transform.translation.y = stick_pos.y * scale.0;
             }
-            for (text_root, stick) in text_query.iter() {
+            for (mut text, stick) in text_query.iter_mut() {
                 let stick_pos = match stick {
                     GamepadStick::Left => left_stick,
                     GamepadStick::Right => right_stick,
                 };
-                let index = match stick {
-                    GamepadStick::Left => 1,
-                    GamepadStick::Right => 3,
-                };
-                let mut text = text_writer.text(text_root, index);
-                *text = format!("{:3}", stick_pos.x);
+                text.0 = format!("{:.3}, {:.3}", stick_pos.x, stick_pos.y);
             }
         }
     }
 
     fn update_connected(
-        gamepads: Query<&Gamepad>,
-        mut query: Query<&mut Text2d, With<ConnectedGamepadsText>>,
+        mut commands: Commands,
+        gamepads: Query<(Entity, Ref<Gamepad>)>,
+        gamepads_text: Single<Entity, With<ConnectedGamepadsText>>,
+        labels: Query<(Entity, &GamepadLabel)>,
+        mut removed_gamepads: RemovedComponents<Gamepad>,
+        mut last_count: Local<usize>,
     ) {
-        let mut text = query.single_mut();
-
-        let formatted = gamepads
-            .iter()
-            .map(|g| format!("{:?}", g))
-            .collect::<Vec<_>>()
-            .join("\n");
-
-        text.0 = if !formatted.is_empty() {
-            formatted
-        } else {
-            "None".to_string()
+        // if no gamepads exist, remove all text children and add "None"
+        if *last_count != 0 && gamepads.iter().len() == 0 {
+            commands
+                .entity(*gamepads_text)
+                .despawn_descendants()
+                .with_child(Text::new("None"));
         }
+        *last_count = gamepads.iter().len();
+
+        // if some gamepads have been removed/deleted, remove their corresponding label
+        for removed_gamepad in removed_gamepads.read() {
+            if let Some((label_entity, _)) =
+                labels.iter().find(|(_, label)| label.0 == removed_gamepad)
+            {
+                commands.entity(label_entity).despawn();
+            }
+        }
+
+        // if no other gamepads have changed, keep everything as-is
+        if !gamepads.iter().any(|(_, gamepad)| gamepad.is_changed()) {
+            return;
+        }
+
+        // otherwise, respawn the whole list
+        let gamepad_labels = gamepads
+            .iter()
+            .map(|(entity, gamepad)| {
+                (
+                    Text::new(format!(
+                        "Gamepad {:?} (Product ID: {})\n",
+                        entity,
+                        gamepad
+                            .product_id()
+                            .map(|id| id.to_string())
+                            .unwrap_or("None".to_string())
+                    )),
+                    GamepadLabel(entity),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        commands
+            .entity(*gamepads_text)
+            .despawn_descendants()
+            .with_children(|builder| {
+                for bundle in gamepad_labels {
+                    builder.spawn(bundle);
+                }
+            });
     }
 }
