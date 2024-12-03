@@ -328,9 +328,12 @@ mod gamepad_viewer_example {
         mut commands: Commands,
         meshes: Res<ButtonMeshes>,
         materials: Res<ButtonMaterials>,
-        gamepad_settings: Single<&GamepadSettings>,
+        gamepad_settings: Query<&GamepadSettings>,
         font: Res<FontHandle>,
     ) {
+        let Some(gamepad_settings) = gamepad_settings.iter().next() else {
+            return;
+        };
         let dead_upper =
             STICK_BOUNDS_SIZE * gamepad_settings.default_axis_settings.deadzone_upperbound();
         let dead_lower =
