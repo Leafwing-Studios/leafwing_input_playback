@@ -91,8 +91,10 @@ mod gamepad_viewer_example {
                 .init_resource::<ButtonMeshes>()
                 .init_resource::<FontHandle>()
                 .add_systems(
-                    Startup,
-                    (setup, setup_sticks, setup_triggers, setup_connected),
+                    PreUpdate,
+                    (setup, setup_sticks, setup_triggers, setup_connected)
+                        .run_if(any_with_component::<Gamepad>.and(run_once))
+                        .after(InputSystem),
                 )
                 .add_systems(
                     Update,
@@ -100,8 +102,9 @@ mod gamepad_viewer_example {
                         update_buttons,
                         update_button_values,
                         update_axes,
-                        update_connected,
-                    ),
+                        update_connected.run_if(any_with_component::<ConnectedGamepadsText>),
+                    )
+                        .run_if(any_with_component::<Gamepad>),
                 );
         }
     }
@@ -110,9 +113,11 @@ mod gamepad_viewer_example {
 
     use bevy::{
         color::palettes,
-        input::gamepad::{GamepadButton, GamepadButtonChangedEvent, GamepadEvent, GamepadSettings},
+        input::{
+            gamepad::{GamepadButton, GamepadButtonChangedEvent, GamepadEvent, GamepadSettings},
+            InputSystem,
+        },
         prelude::*,
-        sprite::{MaterialMesh2dBundle, Mesh2dHandle},
     };
 
     const BUTTON_RADIUS: f32 = 25.;
@@ -131,23 +136,22 @@ mod gamepad_viewer_example {
     const LIVE_COLOR: Color = Color::srgb(0.4, 0.4, 0.4);
     const DEAD_COLOR: Color = Color::srgb(0.3, 0.3, 0.3);
     const EXTENT_COLOR: Color = Color::srgb(0.3, 0.3, 0.3);
-    const TEXT_COLOR: Color = Color::WHITE;
+    const TEXT_COLOR: TextColor = TextColor(Color::WHITE);
 
     #[derive(Component, Deref)]
-    struct ReactTo(GamepadButtonType);
-    #[derive(Component)]
-    struct MoveWithAxes {
-        x_axis: GamepadAxisType,
-        y_axis: GamepadAxisType,
-        scale: f32,
+    struct ReactTo(GamepadButton);
+    #[derive(Clone, Copy, Component)]
+    enum GamepadStick {
+        Left,
+        Right,
     }
     #[derive(Component)]
-    struct TextWithAxes {
-        x_axis: GamepadAxisType,
-        y_axis: GamepadAxisType,
-    }
+    struct GamepadLabel(Entity);
+    #[derive(Component)]
+    struct ButtonScale(f32);
+
     #[derive(Component, Deref)]
-    struct TextWithButtonValue(GamepadButtonType);
+    struct TextWithButtonValue(GamepadButton);
 
     #[derive(Component)]
     struct ConnectedGamepadsText;
@@ -169,10 +173,10 @@ mod gamepad_viewer_example {
     }
     #[derive(Resource)]
     struct ButtonMeshes {
-        circle: Mesh2dHandle,
-        triangle: Mesh2dHandle,
-        start_pause: Mesh2dHandle,
-        trigger: Mesh2dHandle,
+        circle: Handle<Mesh>,
+        triangle: Handle<Mesh>,
+        start_pause: Handle<Mesh>,
+        trigger: Handle<Mesh>,
     }
 
     impl FromWorld for ButtonMeshes {
@@ -202,144 +206,134 @@ mod gamepad_viewer_example {
     }
 
     fn setup(mut commands: Commands, meshes: Res<ButtonMeshes>, materials: Res<ButtonMaterials>) {
-        commands.spawn(Camera2dBundle::default());
+        commands.spawn(Camera2d);
 
         // Buttons
 
         commands
-            .spawn(SpatialBundle {
-                transform: Transform::from_xyz(BUTTONS_X, BUTTONS_Y, 0.),
-                ..default()
-            })
+            .spawn((
+                Transform::from_xyz(BUTTONS_X, BUTTONS_Y, 0.),
+                Visibility::default(),
+            ))
             .with_children(|parent| {
                 parent
-                    .spawn(MaterialMesh2dBundle {
-                        mesh: meshes.circle.clone(),
-                        material: materials.normal.clone(),
-                        transform: Transform::from_xyz(0., BUTTON_CLUSTER_RADIUS, 0.),
-                        ..default()
-                    })
-                    .insert(ReactTo(GamepadButtonType::North));
+                    .spawn((
+                        Mesh2d(meshes.circle.clone()),
+                        MeshMaterial2d(materials.normal.clone()),
+                        Transform::from_xyz(0., BUTTON_CLUSTER_RADIUS, 0.),
+                    ))
+                    .insert(ReactTo(GamepadButton::North));
                 parent
-                    .spawn(MaterialMesh2dBundle {
-                        mesh: meshes.circle.clone(),
-                        material: materials.normal.clone(),
-                        transform: Transform::from_xyz(0., -BUTTON_CLUSTER_RADIUS, 0.),
-                        ..default()
-                    })
-                    .insert(ReactTo(GamepadButtonType::South));
+                    .spawn((
+                        Mesh2d(meshes.circle.clone()),
+                        MeshMaterial2d(materials.normal.clone()),
+                        Transform::from_xyz(0., -BUTTON_CLUSTER_RADIUS, 0.),
+                    ))
+                    .insert(ReactTo(GamepadButton::South));
                 parent
-                    .spawn(MaterialMesh2dBundle {
-                        mesh: meshes.circle.clone(),
-                        material: materials.normal.clone(),
-                        transform: Transform::from_xyz(-BUTTON_CLUSTER_RADIUS, 0., 0.),
-                        ..default()
-                    })
-                    .insert(ReactTo(GamepadButtonType::West));
+                    .spawn((
+                        Mesh2d(meshes.circle.clone()),
+                        MeshMaterial2d(materials.normal.clone()),
+                        Transform::from_xyz(-BUTTON_CLUSTER_RADIUS, 0., 0.),
+                    ))
+                    .insert(ReactTo(GamepadButton::West));
                 parent
-                    .spawn(MaterialMesh2dBundle {
-                        mesh: meshes.circle.clone(),
-                        material: materials.normal.clone(),
-                        transform: Transform::from_xyz(BUTTON_CLUSTER_RADIUS, 0., 0.),
-
-                        ..default()
-                    })
-                    .insert(ReactTo(GamepadButtonType::East));
+                    .spawn((
+                        Mesh2d(meshes.circle.clone()),
+                        MeshMaterial2d(materials.normal.clone()),
+                        Transform::from_xyz(BUTTON_CLUSTER_RADIUS, 0., 0.),
+                    ))
+                    .insert(ReactTo(GamepadButton::East));
             });
 
         // Start and Pause
 
         commands
-            .spawn(MaterialMesh2dBundle {
-                mesh: meshes.start_pause.clone(),
-                material: materials.normal.clone(),
-                transform: Transform::from_xyz(-30., BUTTONS_Y, 0.),
-                ..default()
-            })
-            .insert(ReactTo(GamepadButtonType::Select));
+            .spawn((
+                Mesh2d(meshes.start_pause.clone()),
+                MeshMaterial2d(materials.normal.clone()),
+                Transform::from_xyz(-30., BUTTONS_Y, 0.),
+            ))
+            .insert(ReactTo(GamepadButton::Select));
 
         commands
-            .spawn(MaterialMesh2dBundle {
-                mesh: meshes.start_pause.clone(),
-                material: materials.normal.clone(),
-                transform: Transform::from_xyz(30., BUTTONS_Y, 0.),
-                ..default()
-            })
-            .insert(ReactTo(GamepadButtonType::Start));
+            .spawn((
+                Mesh2d(meshes.start_pause.clone()),
+                MeshMaterial2d(materials.normal.clone()),
+                Transform::from_xyz(30., BUTTONS_Y, 0.),
+            ))
+            .insert(ReactTo(GamepadButton::Start));
 
         // D-Pad
 
         commands
-            .spawn(SpatialBundle {
-                transform: Transform::from_xyz(-BUTTONS_X, BUTTONS_Y, 0.),
-                ..default()
-            })
+            .spawn((
+                Transform::from_xyz(-BUTTONS_X, BUTTONS_Y, 0.),
+                Visibility::default(),
+            ))
             .with_children(|parent| {
                 parent
-                    .spawn(MaterialMesh2dBundle {
-                        mesh: meshes.triangle.clone(),
-                        material: materials.normal.clone(),
-                        transform: Transform::from_xyz(0., BUTTON_CLUSTER_RADIUS, 0.),
-                        ..default()
-                    })
-                    .insert(ReactTo(GamepadButtonType::DPadUp));
+                    .spawn((
+                        Mesh2d(meshes.triangle.clone()),
+                        MeshMaterial2d(materials.normal.clone()),
+                        Transform::from_xyz(0., BUTTON_CLUSTER_RADIUS, 0.),
+                    ))
+                    .insert(ReactTo(GamepadButton::DPadUp));
                 parent
-                    .spawn(MaterialMesh2dBundle {
-                        mesh: meshes.triangle.clone(),
-                        material: materials.normal.clone(),
-                        transform: Transform::from_xyz(0., -BUTTON_CLUSTER_RADIUS, 0.)
+                    .spawn((
+                        Mesh2d(meshes.triangle.clone()),
+                        MeshMaterial2d(materials.normal.clone()),
+                        Transform::from_xyz(0., -BUTTON_CLUSTER_RADIUS, 0.)
                             .with_rotation(Quat::from_rotation_z(PI)),
-                        ..default()
-                    })
-                    .insert(ReactTo(GamepadButtonType::DPadDown));
+                    ))
+                    .insert(ReactTo(GamepadButton::DPadDown));
                 parent
-                    .spawn(MaterialMesh2dBundle {
-                        mesh: meshes.triangle.clone(),
-                        material: materials.normal.clone(),
-                        transform: Transform::from_xyz(-BUTTON_CLUSTER_RADIUS, 0., 0.)
+                    .spawn((
+                        Mesh2d(meshes.triangle.clone()),
+                        MeshMaterial2d(materials.normal.clone()),
+                        Transform::from_xyz(-BUTTON_CLUSTER_RADIUS, 0., 0.)
                             .with_rotation(Quat::from_rotation_z(PI / 2.)),
-                        ..default()
-                    })
-                    .insert(ReactTo(GamepadButtonType::DPadLeft));
+                    ))
+                    .insert(ReactTo(GamepadButton::DPadLeft));
                 parent
-                    .spawn(MaterialMesh2dBundle {
-                        mesh: meshes.triangle.clone(),
-                        material: materials.normal.clone(),
-                        transform: Transform::from_xyz(BUTTON_CLUSTER_RADIUS, 0., 0.)
+                    .spawn((
+                        Mesh2d(meshes.triangle.clone()),
+                        MeshMaterial2d(materials.normal.clone()),
+                        Transform::from_xyz(BUTTON_CLUSTER_RADIUS, 0., 0.)
                             .with_rotation(Quat::from_rotation_z(-PI / 2.)),
-                        ..default()
-                    })
-                    .insert(ReactTo(GamepadButtonType::DPadRight));
+                    ))
+                    .insert(ReactTo(GamepadButton::DPadRight));
             });
 
         // Triggers
 
         commands
-            .spawn(MaterialMesh2dBundle {
-                mesh: meshes.trigger.clone(),
-                material: materials.normal.clone(),
-                transform: Transform::from_xyz(-BUTTONS_X, BUTTONS_Y + 115., 0.),
-                ..default()
-            })
-            .insert(ReactTo(GamepadButtonType::LeftTrigger));
+            .spawn((
+                Mesh2d(meshes.trigger.clone()),
+                MeshMaterial2d(materials.normal.clone()),
+                Transform::from_xyz(-BUTTONS_X, BUTTONS_Y + 115., 0.),
+            ))
+            .insert(ReactTo(GamepadButton::LeftTrigger));
 
         commands
-            .spawn(MaterialMesh2dBundle {
-                mesh: meshes.trigger.clone(),
-                material: materials.normal.clone(),
-                transform: Transform::from_xyz(BUTTONS_X, BUTTONS_Y + 115., 0.),
-                ..default()
-            })
-            .insert(ReactTo(GamepadButtonType::RightTrigger));
+            .spawn((
+                Mesh2d(meshes.trigger.clone()),
+                MeshMaterial2d(materials.normal.clone()),
+                Transform::from_xyz(BUTTONS_X, BUTTONS_Y + 115., 0.),
+            ))
+            .insert(ReactTo(GamepadButton::RightTrigger));
     }
 
     fn setup_sticks(
         mut commands: Commands,
         meshes: Res<ButtonMeshes>,
         materials: Res<ButtonMaterials>,
-        gamepad_settings: Res<GamepadSettings>,
+        gamepad_settings: Query<&GamepadSettings>,
         font: Res<FontHandle>,
     ) {
+        let Some(gamepad_settings) = gamepad_settings.iter().next() else {
+            return;
+        };
         let dead_upper =
             STICK_BOUNDS_SIZE * gamepad_settings.default_axis_settings.deadzone_upperbound();
         let dead_lower =
@@ -354,100 +348,71 @@ mod gamepad_viewer_example {
         let live_size = live_lower.abs() + live_upper.abs();
         let live_mid = (live_lower + live_upper) / 2.0;
 
-        let mut spawn_stick = |x_pos, y_pos, x_axis, y_axis, button| {
+        let mut spawn_stick = |x_pos, y_pos, stick, button| {
             commands
-                .spawn(SpatialBundle {
-                    transform: Transform::from_xyz(x_pos, y_pos, 0.),
-                    ..default()
-                })
+                .spawn((Transform::from_xyz(x_pos, y_pos, 0.), Visibility::default()))
                 .with_children(|parent| {
                     // full extent
-                    parent.spawn(SpriteBundle {
-                        sprite: Sprite {
-                            custom_size: Some(Vec2::splat(STICK_BOUNDS_SIZE * 2.)),
-                            color: EXTENT_COLOR,
-                            ..default()
-                        },
+                    parent.spawn((Sprite {
+                        custom_size: Some(Vec2::splat(STICK_BOUNDS_SIZE * 2.)),
+                        color: EXTENT_COLOR,
                         ..default()
-                    });
+                    },));
                     // live zone
-                    parent.spawn(SpriteBundle {
-                        transform: Transform::from_xyz(live_mid, live_mid, 2.),
-                        sprite: Sprite {
+                    parent.spawn((
+                        Transform::from_xyz(live_mid, live_mid, 2.),
+                        Sprite {
                             custom_size: Some(Vec2::new(live_size, live_size)),
                             color: LIVE_COLOR,
                             ..default()
                         },
-                        ..default()
-                    });
+                    ));
                     // dead zone
-                    parent.spawn(SpriteBundle {
-                        transform: Transform::from_xyz(dead_mid, dead_mid, 3.),
-                        sprite: Sprite {
+                    parent.spawn((
+                        Transform::from_xyz(dead_mid, dead_mid, 3.),
+                        Sprite {
                             custom_size: Some(Vec2::new(dead_size, dead_size)),
                             color: DEAD_COLOR,
                             ..default()
                         },
-                        ..default()
-                    });
+                    ));
                     // text
-                    let style = TextStyle {
+                    let font = TextFont {
                         font_size: 16.,
-                        color: TEXT_COLOR,
                         font: font.clone(),
+                        ..default()
                     };
-                    parent
-                        .spawn(Text2dBundle {
-                            transform: Transform::from_xyz(0., STICK_BOUNDS_SIZE + 2., 4.),
-                            text: Text::from_sections([
-                                TextSection {
-                                    value: format!("{:.3}", 0.),
-                                    style: style.clone(),
-                                },
-                                TextSection {
-                                    value: ", ".to_string(),
-                                    style: style.clone(),
-                                },
-                                TextSection {
-                                    value: format!("{:.3}", 0.),
-                                    style,
-                                },
-                            ])
-                            .with_justify(JustifyText::Center),
-                            ..default()
-                        })
-                        .insert(TextWithAxes { x_axis, y_axis });
+                    let layout = TextLayout::new(JustifyText::Justified, LineBreak::NoWrap);
+                    parent.spawn((
+                        Transform::from_xyz(0., STICK_BOUNDS_SIZE + 2., 4.),
+                        Text2d::new(format!("{:.3}, {:.3}", 0., 0.)),
+                        font,
+                        layout,
+                        stick,
+                    ));
                     // cursor
-                    parent
-                        .spawn(MaterialMesh2dBundle {
-                            mesh: meshes.circle.clone(),
-                            material: materials.normal.clone(),
-                            transform: Transform::from_xyz(0., 0., 5.)
-                                .with_scale(Vec2::splat(0.2).extend(1.)),
-                            ..default()
-                        })
-                        .insert(MoveWithAxes {
-                            x_axis,
-                            y_axis,
-                            scale: STICK_BOUNDS_SIZE,
-                        })
-                        .insert(ReactTo(button));
+                    parent.spawn((
+                        Mesh2d(meshes.circle.clone()),
+                        MeshMaterial2d(materials.normal.clone()),
+                        Transform::from_xyz(0., 0., 5.).with_scale(Vec2::splat(0.2).extend(1.)),
+                        stick,
+                        ButtonScale(STICK_BOUNDS_SIZE),
+                        ReactTo(button),
+                    ));
                 });
         };
 
         spawn_stick(
             -STICKS_X,
             STICKS_Y,
-            GamepadAxisType::LeftStickX,
-            GamepadAxisType::LeftStickY,
-            GamepadButtonType::LeftThumb,
+            GamepadStick::Left,
+            GamepadButton::LeftThumb,
         );
         spawn_stick(
             STICKS_X,
             STICKS_Y,
-            GamepadAxisType::RightStickX,
-            GamepadAxisType::RightStickY,
-            GamepadButtonType::RightThumb,
+            GamepadStick::Right,
+            GamepadButton::RightThumb,
         );
     }
 
@@ -459,77 +424,71 @@ mod gamepad_viewer_example {
     ) {
         let mut spawn_trigger = |x, y, button_type| {
             commands
-                .spawn(MaterialMesh2dBundle {
-                    mesh: meshes.trigger.clone(),
-                    material: materials.normal.clone(),
-                    transform: Transform::from_xyz(x, y, 0.),
-                    ..default()
-                })
+                .spawn((
+                    Mesh2d(meshes.trigger.clone()),
+                    MeshMaterial2d(materials.normal.clone()),
+                    Transform::from_xyz(x, y, 0.),
+                ))
                 .insert(ReactTo(button_type))
                 .with_children(|parent| {
                     parent
-                        .spawn(Text2dBundle {
-                            transform: Transform::from_xyz(0., 0., 1.),
-                            text: Text::from_section(
-                                format!("{:.3}", 0.),
-                                TextStyle {
-                                    font: font.clone(),
-                                    font_size: 16.,
-                                    color: TEXT_COLOR,
-                                },
-                            )
-                            .with_justify(JustifyText::Center),
-                            ..default()
-                        })
+                        .spawn((
+                            Transform::from_xyz(0., 0., 1.),
+                            Text2d::new(format!("{:.3}", 0.)),
+                            TextFont {
+                                font: font.clone(),
+                                font_size: 16.,
+                                ..default()
+                            },
+                            TEXT_COLOR,
+                        ))
                         .insert(TextWithButtonValue(button_type));
                 });
         };
 
-        spawn_trigger(
-            -BUTTONS_X,
-            BUTTONS_Y + 145.,
-            GamepadButtonType::LeftTrigger2,
-        );
-        spawn_trigger(
-            BUTTONS_X,
-            BUTTONS_Y + 145.,
-            GamepadButtonType::RightTrigger2,
-        );
+        spawn_trigger(-BUTTONS_X, BUTTONS_Y + 145., GamepadButton::LeftTrigger2);
+        spawn_trigger(BUTTONS_X, BUTTONS_Y + 145., GamepadButton::RightTrigger2);
     }
 
     fn setup_connected(mut commands: Commands, font: Res<FontHandle>) {
-        let style = TextStyle {
-            color: TEXT_COLOR,
+        let font = TextFont {
             font_size: 30.,
             font: font.clone(),
+            ..default()
         };
         commands
-            .spawn(TextBundle::from_sections([
-                TextSection {
-                    value: "Connected Gamepads\n".to_string(),
-                    style: style.clone(),
+            .spawn((
+                ConnectedGamepadsText,
+                Text::new("Connected Gamepads:".to_string()),
+                font.clone(),
+                TextLayout::new(JustifyText::Left, LineBreak::WordBoundary),
+                Node {
+                    justify_content: JustifyContent::FlexStart,
+                    flex_direction: FlexDirection::Column,
+                    top: Val::Percent(2.),
+                    left: Val::Percent(2.),
+                    width: Val::Px(350.),
+                    overflow: Overflow::clip_x(),
+                    row_gap: Val::Px(20.),
+                    padding: UiRect::top(Val::Px(40.)),
+                    ..Default::default()
                 },
-                TextSection {
-                    value: "None".to_string(),
-                    style,
-                },
-            ]))
-            .insert(ConnectedGamepadsText);
+            ))
+            .with_child(Text::new("None"));
     }
 
     fn update_buttons(
-        gamepads: Res<Gamepads>,
-        button_inputs: Res<ButtonInput<GamepadButton>>,
+        gamepads: Query<&Gamepad>,
         materials: Res<ButtonMaterials>,
-        mut query: Query<(&mut Handle<ColorMaterial>, &ReactTo)>,
+        mut query: Query<(&mut MeshMaterial2d<ColorMaterial>, &ReactTo)>,
     ) {
         for gamepad in gamepads.iter() {
             for (mut handle, react_to) in query.iter_mut() {
-                if button_inputs.just_pressed(GamepadButton::new(gamepad, **react_to)) {
-                    *handle = materials.active.clone();
+                if gamepad.just_pressed(**react_to) {
+                    handle.0 = materials.active.clone();
                 }
-                if button_inputs.just_released(GamepadButton::new(gamepad, **react_to)) {
-                    *handle = materials.normal.clone();
+                if gamepad.just_released(**react_to) {
+                    handle.0 = materials.normal.clone();
                 }
             }
         }
@@ -537,18 +496,13 @@ mod gamepad_viewer_example {
 
     fn update_button_values(
         mut events: EventReader<GamepadEvent>,
-        mut query: Query<(&mut Text, &TextWithButtonValue)>,
+        mut query: Query<(&mut Text2d, &TextWithButtonValue)>,
     ) {
         for event in events.read() {
-            if let GamepadEvent::Button(GamepadButtonChangedEvent {
-                gamepad: _,
-                button_type,
-                value,
-            }) = event
-            {
+            if let GamepadEvent::Button(GamepadButtonChangedEvent { button, value, .. }) = event {
                 for (mut text, text_with_button_value) in query.iter_mut() {
-                    if *button_type == **text_with_button_value {
-                        text.sections[0].value = format!("{:.3}", value);
+                    if *button == **text_with_button_value {
+                        text.0 = format!("{:3}", value);
                     }
                 }
             }
@@ -556,55 +510,87 @@ mod gamepad_viewer_example {
     }
 
     fn update_axes(
-        mut events: EventReader<GamepadEvent>,
-        mut query: Query<(&mut Transform, &MoveWithAxes)>,
-        mut text_query: Query<(&mut Text, &TextWithAxes)>,
+        gamepads: Query<&Gamepad>,
+        mut ui_query: Query<(&mut Transform, &GamepadStick, &ButtonScale), Without<Text2d>>,
+        mut text_query: Query<(&mut Text2d, &GamepadStick)>,
     ) {
-        for event in events.read() {
-            if let GamepadEvent::Axis(axis_changed_event) = event {
-                let axis_type = axis_changed_event.axis_type;
-                let value = axis_changed_event.value;
-
-                for (mut transform, move_with) in query.iter_mut() {
-                    if axis_type == move_with.x_axis {
-                        transform.translation.x = value * move_with.scale;
-                    }
-                    if axis_type == move_with.y_axis {
-                        transform.translation.y = value * move_with.scale;
-                    }
-                }
-                for (mut text, text_with_axes) in text_query.iter_mut() {
-                    if axis_type == text_with_axes.x_axis {
-                        text.sections[0].value = format!("{:.3}", value);
-                    }
-                    if axis_type == text_with_axes.y_axis {
-                        text.sections[2].value = format!("{:.3}", value);
-                    }
-                }
+        for gamepad in gamepads.iter() {
+            let left_stick = gamepad.left_stick();
+            let right_stick = gamepad.right_stick();
+            for (mut transform, stick, scale) in ui_query.iter_mut() {
+                let stick_pos = match stick {
+                    GamepadStick::Left => left_stick,
+                    GamepadStick::Right => right_stick,
+                };
+                transform.translation.x = stick_pos.x * scale.0;
+                transform.translation.y = stick_pos.y * scale.0;
+            }
+            for (mut text, stick) in text_query.iter_mut() {
+                let stick_pos = match stick {
+                    GamepadStick::Left => left_stick,
+                    GamepadStick::Right => right_stick,
+                };
+                text.0 = format!("{:.3}, {:.3}", stick_pos.x, stick_pos.y);
             }
         }
     }
 
     fn update_connected(
-        gamepads: Res<Gamepads>,
-        mut query: Query<&mut Text, With<ConnectedGamepadsText>>,
+        mut commands: Commands,
+        gamepads: Query<(Entity, Ref<Gamepad>)>,
+        gamepads_text: Single<Entity, With<ConnectedGamepadsText>>,
+        labels: Query<(Entity, &GamepadLabel)>,
+        mut removed_gamepads: RemovedComponents<Gamepad>,
+        mut last_count: Local<usize>,
     ) {
-        if !gamepads.is_changed() {
+        // if no gamepads exist, remove all text children and add "None"
+        if *last_count != 0 && gamepads.iter().len() == 0 {
+            commands
+                .entity(*gamepads_text)
+                .despawn_descendants()
+                .with_child(Text::new("None"));
+        }
+        *last_count = gamepads.iter().len();
+
+        // if some gamepads have been removed/deleted, remove their corresponding label
+        for removed_gamepad in removed_gamepads.read() {
+            if let Some((label_entity, _)) =
+                labels.iter().find(|(_, label)| label.0 == removed_gamepad)
+            {
+                commands.entity(label_entity).despawn();
+            }
+        }
+
+        // if no other gamepads have changed, keep everything as-is
+        if !gamepads.iter().any(|(_, gamepad)| gamepad.is_changed()) {
             return;
         }
 
-        let mut text = query.single_mut();
-
-        let formatted = gamepads
+        // otherwise, respawn the whole list
+        let gamepad_labels = gamepads
             .iter()
-            .map(|g| format!("{:?}", g))
-            .collect::<Vec<_>>()
-            .join("\n");
+            .map(|(entity, gamepad)| {
+                (
+                    Text::new(format!(
+                        "Gamepad {:?} (Product ID: {})\n",
+                        entity,
+                        gamepad
+                            .product_id()
+                            .map(|id| id.to_string())
+                            .unwrap_or("None".to_string())
+                    )),
+                    GamepadLabel(entity),
+                )
+            })
+            .collect::<Vec<_>>();
 
-        text.sections[1].value = if !formatted.is_empty() {
-            formatted
-        } else {
-            "None".to_string()
-        }
+        commands
+            .entity(*gamepads_text)
+            .despawn_descendants()
+            .with_children(|builder| {
+                for bundle in gamepad_labels {
+                    builder.spawn(bundle);
+                }
+            });
     }
 }

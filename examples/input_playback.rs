@@ -28,7 +28,7 @@ enum InputStrategy {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d);
 }
 
 pub fn cursor_pos_as_world_pos(
@@ -38,7 +38,7 @@ pub fn cursor_pos_as_world_pos(
     let (camera_transform, camera) = camera_query.single();
     current_window
         .cursor_position()
-        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor).ok())
         .map(|ray| ray.origin.truncate())
 }
 
@@ -57,20 +57,18 @@ fn spawn_boxes(
         let primary_window = windows.single();
         // Don't break if we leave the window
         if let Some(cursor_pos) = cursor_pos_as_world_pos(primary_window, &camera_query) {
-            commands
-                .spawn(SpriteBundle {
-                    sprite: Sprite {
-                        color: Color::Srgba(palettes::css::DARK_GREEN),
-                        ..default()
-                    },
-                    transform: Transform {
-                        translation: cursor_pos.extend(0.0),
-                        scale: Vec3::splat(BOX_SCALE),
-                        ..default()
-                    },
+            commands.spawn((
+                Sprite {
+                    color: Color::Srgba(palettes::css::DARK_GREEN),
                     ..default()
-                })
-                .insert(Box);
+                },
+                Transform {
+                    translation: cursor_pos.extend(0.0),
+                    scale: Vec3::splat(BOX_SCALE),
+                    ..default()
+                },
+                Box,
+            ));
         }
     }
 }

@@ -27,8 +27,8 @@ pub struct InputCapturePlugin;
 
 impl Plugin for InputCapturePlugin {
     fn build(&self, app: &mut App) {
-        app.observe(BeginInputCapture::observer)
-            .observe(EndInputCapture::observer)
+        app.add_observer(BeginInputCapture::observer)
+            .add_observer(EndInputCapture::observer)
             .add_systems(
                 Last,
                 (

@@ -30,14 +30,14 @@ pub struct InputPlaybackPlugin;
 
 impl Plugin for InputPlaybackPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(BeginInputPlayback::observer)
-            .observe(EndInputPlayback::observer)
+        app.add_observer(BeginInputPlayback::observer)
+            .add_observer(EndInputPlayback::observer)
             .add_systems(
                 First,
                 playback_timestamped_input
                     .run_if(
                         resource_exists::<PlaybackProgress>
-                            .and_then(resource_exists::<TimestampedInputs>),
+                            .and(resource_exists::<TimestampedInputs>),
                     )
                     .after(bevy::ecs::event::EventUpdates),
             );
